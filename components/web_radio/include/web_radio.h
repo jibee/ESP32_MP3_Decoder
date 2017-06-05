@@ -10,17 +10,24 @@
 
 #include "audio_player.h"
 
-typedef struct {
+class WebRadio
+{
+    private:
+	const char *url;
+	player_t *player_config;
 
-} radio_controls_t;
+    public:
+	const char* getUrl() const { return url; };
+	player_t* getPlayer() const { return player_config; };
+	typedef struct {
+	} radio_controls_t;
 
-typedef struct {
-    char *url;
-    player_t *player_config;
-} web_radio_t;
+	WebRadio(const char* url, player_t* config);
 
-void web_radio_init(web_radio_t *config);
-void web_radio_start(web_radio_t *config);
-
+	void web_radio_init();
+	void web_radio_start();
+	void web_radio_stop();
+	void web_radio_destroy();
+};
 
 #endif /* INCLUDE_WEB_RADIO_H_ */

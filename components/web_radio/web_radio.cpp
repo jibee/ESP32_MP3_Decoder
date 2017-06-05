@@ -110,7 +110,7 @@ static int on_message_complete_cb(http_parser *parser)
 
 static void http_get_task(void *pvParameters)
 {
-    web_radio_t *radio_conf = (web_radio_t*) pvParameters;
+    WebRadio* radio_conf = (WebRadio*) pvParameters;
 
     /* configure callbacks */
     http_parser_settings callbacks = { NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL };
@@ -122,8 +122,11 @@ static void http_get_task(void *pvParameters)
     callbacks.on_message_complete = on_message_complete_cb;
 
     // blocks until end of stream
-    int result = http_client_get(radio_conf->url, &callbacks,
-            radio_conf->player_config);
+    int result = http_client_get(
+	    radio_conf->getUrl(),
+	    &callbacks,
+	    radio_conf->getPlayer()
+	    );
 
     if (result != 0) {
         ESP_LOGE(TAG, "http_client_get error");
@@ -135,25 +138,25 @@ static void http_get_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-void web_radio_start(web_radio_t *config)
+void WebRadio::web_radio_start()
 {
     // start reader task
-    xTaskCreatePinnedToCore(&http_get_task, "http_get_task", 2560, config, 20,
+    xTaskCreatePinnedToCore(&http_get_task, "http_get_task", 2560, this, 20,
     NULL, 0);
 }
 
-void web_radio_stop(web_radio_t *config)
+void WebRadio::web_radio_stop()
 {
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
 
-    audio_player_stop(config->player_config);
+    audio_player_stop(player_config);
     // reader task terminates itself
 }
 
 void web_radio_gpio_handler_task(void *pvParams)
 {
     gpio_handler_param_t *params = (gpio_handler_param_t*) pvParams;
-    web_radio_t *config = (web_radio_t*) params->user_data;
+    WebRadio *config = (WebRadio*) params->user_data;
     xQueueHandle gpio_evt_queue = params->gpio_evt_queue;
 
     uint32_t io_num;
@@ -164,12 +167,12 @@ void web_radio_gpio_handler_task(void *pvParams)
             switch (get_player_status()) {
                 case RUNNING:
                     ESP_LOGI(TAG, "stopping player");
-                    web_radio_stop(config);
+                    config->web_radio_stop();
                     break;
 
                 case STOPPED:
                     ESP_LOGI(TAG, "starting player");
-                    web_radio_start(config);
+                    config->web_radio_start();
                     break;
 
                 default:
@@ -179,14 +182,18 @@ void web_radio_gpio_handler_task(void *pvParams)
     }
 }
 
-void web_radio_init(web_radio_t *config)
+void WebRadio::web_radio_init()
 {
     // controls_init(web_radio_gpio_handler_task, 2048, config);
-    audio_player_init(config->player_config);
+    audio_player_init(player_config);
 }
 
-void web_radio_destroy(web_radio_t *config)
+void WebRadio::web_radio_destroy()
 {
     //controls_destroy(config);
-    audio_player_destroy(config->player_config);
+    audio_player_destroy(player_config);
+}
+
+WebRadio::WebRadio(const char* u, player_t* config): url(u), player_config(config)
+{
 }

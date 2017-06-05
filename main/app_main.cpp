@@ -102,24 +102,23 @@ const char* play_url = PLAY_URL;
 
 static void start_web_radio()
 {
-    // init web radio
-    web_radio_t *radio_config = (web_radio_t*)calloc(1, sizeof(web_radio_t));
-    radio_config->url = (char*) play_url;
 
     // init player config
-    radio_config->player_config = (player_t*) calloc(1, sizeof(player_t));
-    radio_config->player_config->command = CMD_NONE;
-    radio_config->player_config->decoder_status = UNINITIALIZED;
-    radio_config->player_config->decoder_command = CMD_NONE;
-    radio_config->player_config->buffer_pref = BUF_PREF_SAFE;
-    radio_config->player_config->media_stream = (media_stream_t*)calloc(1, sizeof(media_stream_t));
+    player_t* player_config = (player_t*) calloc(1, sizeof(player_t));
+    player_config->command = CMD_NONE;
+    player_config->decoder_status = UNINITIALIZED;
+    player_config->decoder_command = CMD_NONE;
+    player_config->buffer_pref = BUF_PREF_SAFE;
+    player_config->media_stream = (media_stream_t*)calloc(1, sizeof(media_stream_t));
 
+    // init web radio
+    WebRadio *radio_config = new WebRadio(play_url, player_config);
     // init renderer
     renderer_init(create_renderer_config());
 
     // start radio
-    web_radio_init(radio_config);
-    web_radio_start(radio_config);
+    radio_config->web_radio_init();
+    radio_config->web_radio_start();
 }
 
 /**
