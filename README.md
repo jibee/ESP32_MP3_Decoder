@@ -12,6 +12,10 @@ Features:
 
 This project is based on Sprite\_TM's awesome MP3 web radio project for the ESP8266: https://github.com/espressif/ESP8266_MP3_DECODER
 
+## About this fork
+I aim to make this web radio compatible with more streams, able to switch between streams and bluetooth mode seamlessly... Some bits
+are ported to C++ for making the module boundaries cleared.
+
 ## Required Software
 
 Get the SDK:
