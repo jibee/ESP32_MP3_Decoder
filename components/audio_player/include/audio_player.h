@@ -12,6 +12,11 @@
 #include "common_component.h"
 #include "audio_renderer.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int audio_stream_consumer(const char *recv_buf, ssize_t bytes_read, void *user_data);
 
 
@@ -45,9 +50,12 @@ typedef struct {
 component_status_t get_player_status();
 
 void audio_player_init(player_t *player_config);
-void audio_player_start();
-void audio_player_stop();
-void audio_player_destroy();
+void audio_player_start(player_t* player_config);
+void audio_player_stop(player_t* player_config);
+void audio_player_destroy(player_t* player_config);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INCLUDE_AUDIO_PLAYER_H_ */

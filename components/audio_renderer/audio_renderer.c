@@ -114,7 +114,7 @@ void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
             && renderer_instance->output_mode != DAC_BUILT_IN) {
 
         // do not wait longer than the duration of the buffer
-        TickType_t max_wait = buf_desc->sample_rate / num_samples / 2;
+        // TickType_t max_wait = buf_desc->sample_rate / num_samples / 2;
 
         // don't block, rather retry
         int bytes_left = buf_len;

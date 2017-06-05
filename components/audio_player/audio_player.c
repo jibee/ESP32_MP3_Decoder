@@ -123,19 +123,19 @@ void audio_player_init(player_t *player)
     player_status = INITIALIZED;
 }
 
-void audio_player_destroy()
+void audio_player_destroy(player_t* player)
 {
     renderer_destroy();
     player_status = UNINITIALIZED;
 }
 
-void audio_player_start()
+void audio_player_start(player_t* player)
 {
     renderer_start();
     player_status = RUNNING;
 }
 
-void audio_player_stop()
+void audio_player_stop(player_t* player)
 {
     renderer_stop();
     player_status = STOPPED;

@@ -12,6 +12,11 @@
 #include "driver/i2s.h"
 #include "common_component.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef enum {
     I2S, I2S_MERUS, DAC_BUILT_IN, PDM
 } output_mode_t;
@@ -62,5 +67,8 @@ void renderer_destroy();
 void renderer_zero_dma_buffer();
 renderer_config_t *renderer_get();
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INCLUDE_AUDIO_RENDERER_H_ */

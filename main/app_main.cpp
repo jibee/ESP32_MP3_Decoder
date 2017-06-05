@@ -80,13 +80,13 @@ static void start_wifi()
 
 static renderer_config_t *create_renderer_config()
 {
-    renderer_config_t *renderer_config = calloc(1, sizeof(renderer_config_t));
+    renderer_config_t *renderer_config = (renderer_config_t*) calloc(1, sizeof(renderer_config_t));
 
     renderer_config->bit_depth = I2S_BITS_PER_SAMPLE_16BIT;
     renderer_config->i2s_num = I2S_NUM_0;
     renderer_config->sample_rate = 44100;
     renderer_config->sample_rate_modifier = 1.0;
-    renderer_config->output_mode = AUDIO_OUTPUT_MODE;
+    renderer_config->output_mode = 0==AUDIO_OUTPUT_MODE?I2S:(1==AUDIO_OUTPUT_MODE?I2S_MERUS:(2==AUDIO_OUTPUT_MODE?DAC_BUILT_IN:(3==AUDIO_OUTPUT_MODE?PDM:I2S)));
 
     if(renderer_config->output_mode == I2S_MERUS) {
         renderer_config->bit_depth = I2S_BITS_PER_SAMPLE_32BIT;
@@ -98,20 +98,21 @@ static renderer_config_t *create_renderer_config()
 
     return renderer_config;
 }
+const char* play_url = PLAY_URL;
 
 static void start_web_radio()
 {
     // init web radio
-    web_radio_t *radio_config = calloc(1, sizeof(web_radio_t));
-    radio_config->url = PLAY_URL;
+    web_radio_t *radio_config = (web_radio_t*)calloc(1, sizeof(web_radio_t));
+    radio_config->url = (char*) play_url;
 
     // init player config
-    radio_config->player_config = calloc(1, sizeof(player_t));
+    radio_config->player_config = (player_t*) calloc(1, sizeof(player_t));
     radio_config->player_config->command = CMD_NONE;
     radio_config->player_config->decoder_status = UNINITIALIZED;
     radio_config->player_config->decoder_command = CMD_NONE;
     radio_config->player_config->buffer_pref = BUF_PREF_SAFE;
-    radio_config->player_config->media_stream = calloc(1, sizeof(media_stream_t));
+    radio_config->player_config->media_stream = (media_stream_t*)calloc(1, sizeof(media_stream_t));
 
     // init renderer
     renderer_init(create_renderer_config());
@@ -124,6 +125,8 @@ static void start_web_radio()
 /**
  * entry point
  */
+extern "C"
+{
 void app_main()
 {
     ESP_LOGI(TAG, "starting app_main()");
@@ -140,4 +143,5 @@ void app_main()
 
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
     // ESP_LOGI(TAG, "app_main stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
+}
 }

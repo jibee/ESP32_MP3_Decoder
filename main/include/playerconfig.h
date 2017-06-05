@@ -4,7 +4,9 @@
 
 /* MP3 stream */
 #if 1
-#define PLAY_URL "http://ice1.somafm.com/illstreet-128-mp3"
+//#define PLAY_URL "http://cdn.nrjaudio.fm/audio1/fr/30201/mp3_128.mp3?origine=fluxradios"
+#define PLAY_URL "http://cdn.nrjaudio.fm/audio1/fr/30201/mp3_128.mp3"
+//#define PLAY_URL "http://185.52.127.160/fr/30201/mp3_128.mp3"
 #endif
 
 /* AAC LC stream */

@@ -4,6 +4,10 @@
 
 #include "http_parser.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 /**
   * @brief  Application specified event callback function
   *
@@ -17,5 +21,8 @@ typedef esp_err_t (*stream_reader_cb)(char *recv_buf, ssize_t bytes_read, void *
 
 int http_client_get(char *uri, http_parser_settings *callbacks, void *user_data);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

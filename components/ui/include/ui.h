@@ -8,9 +8,18 @@
 #ifndef _INCLUDE_UI_H_
 #define _INCLUDE_UI_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef enum { UI_NONE, UI_CONNECTING, UI_CONNECTED } ui_event_t;
 
 void ui_queue_event(ui_event_t evt);
 int ui_init(gpio_num_t pin);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _INCLUDE_UI_H_ */

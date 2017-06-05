@@ -25,23 +25,36 @@
 
 typedef enum
 {
-    HDR_CONTENT_TYPE = 1
+    HDR_UNKNOWN = 0,
+    HDR_CONTENT_TYPE = 1,
+    HDR_LOCATION = 2
 } header_field_t;
 
-static header_field_t curr_header_field = 0;
-static content_type_t content_type = 0;
+static header_field_t curr_header_field = HDR_UNKNOWN;
+static content_type_t content_type = MIME_UNKNOWN;
 static bool headers_complete = false;
+
+static int on_status_cb(http_parser* parser, const char *at, size_t length)
+{
+	ESP_LOGI(TAG, "HTTP status: %i %s", length, at);
+	return 0;
+}
 
 static int on_header_field_cb(http_parser *parser, const char *at, size_t length)
 {
     // convert to lower case
-    unsigned char *c = (unsigned char *) at;
-    for (; *c; ++c)
-        *c = tolower(*c);
 
-    curr_header_field = 0;
-    if (strstr(at, "content-type")) {
+    curr_header_field = HDR_UNKNOWN;
+    if (0==strncasecmp(at, "content-type", length)) {
         curr_header_field = HDR_CONTENT_TYPE;
+    }
+    else if(0==strncasecmp(at, "location", length))
+    {
+	curr_header_field = HDR_LOCATION;
+    }
+    else
+    {
+	ESP_LOGE(TAG, "unknown header %s %i", at, length);
     }
 
     return 0;
@@ -61,6 +74,10 @@ static int on_header_value_cb(http_parser *parser, const char *at, size_t length
             return -1;
         }
     }
+    if(HDR_LOCATION == curr_header_field)
+    {
+
+    }
 
     return 0;
 }
@@ -68,7 +85,7 @@ static int on_header_value_cb(http_parser *parser, const char *at, size_t length
 static int on_headers_complete_cb(http_parser *parser)
 {
     headers_complete = true;
-    player_t *player_config = parser->data;
+    player_t *player_config = (player_t*) parser->data;
 
     player_config->media_stream->content_type = content_type;
     player_config->media_stream->eof = false;
@@ -85,7 +102,7 @@ static int on_body_cb(http_parser* parser, const char *at, size_t length)
 
 static int on_message_complete_cb(http_parser *parser)
 {
-    player_t *player_config = parser->data;
+    player_t *player_config = (player_t*) parser->data;
     player_config->media_stream->eof = true;
 
     return 0;
@@ -93,10 +110,11 @@ static int on_message_complete_cb(http_parser *parser)
 
 static void http_get_task(void *pvParameters)
 {
-    web_radio_t *radio_conf = pvParameters;
+    web_radio_t *radio_conf = (web_radio_t*) pvParameters;
 
     /* configure callbacks */
-    http_parser_settings callbacks = { 0 };
+    http_parser_settings callbacks = { NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL };
+    callbacks.on_status = on_status_cb;
     callbacks.on_body = on_body_cb;
     callbacks.on_header_field = on_header_field_cb;
     callbacks.on_header_value = on_header_value_cb;
@@ -134,14 +152,14 @@ void web_radio_stop(web_radio_t *config)
 
 void web_radio_gpio_handler_task(void *pvParams)
 {
-    gpio_handler_param_t *params = pvParams;
-    web_radio_t *config = params->user_data;
+    gpio_handler_param_t *params = (gpio_handler_param_t*) pvParams;
+    web_radio_t *config = (web_radio_t*) params->user_data;
     xQueueHandle gpio_evt_queue = params->gpio_evt_queue;
 
     uint32_t io_num;
     for (;;) {
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            ESP_LOGI(TAG, "GPIO[%d] intr, val: %d", io_num, gpio_get_level(io_num));
+            ESP_LOGI(TAG, "GPIO[%d] intr, val: %d", io_num, gpio_get_level((gpio_num_t)io_num));
 
             switch (get_player_status()) {
                 case RUNNING:
@@ -169,6 +187,6 @@ void web_radio_init(web_radio_t *config)
 
 void web_radio_destroy(web_radio_t *config)
 {
-    controls_destroy(config);
+    //controls_destroy(config);
     audio_player_destroy(config->player_config);
 }
