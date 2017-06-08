@@ -85,25 +85,25 @@ static int on_header_value_cb(http_parser *parser, const char *at, size_t length
 static int on_headers_complete_cb(http_parser *parser)
 {
     headers_complete = true;
-    player_t *player_config = (player_t*) parser->data;
+    Player* player_config = (Player*) parser->data;
 
-    player_config->media_stream->content_type = content_type;
-    player_config->media_stream->eof = false;
+    player_config->getMediaStream()->content_type = content_type;
+    player_config->getMediaStream()->eof = false;
 
-    audio_player_start(player_config);
+    player_config->audio_player_start();
 
     return 0;
 }
 
 static int on_body_cb(http_parser* parser, const char *at, size_t length)
 {
-    return audio_stream_consumer(at, length, parser->data);
+    return Player::audio_stream_consumer(at, length, parser->data);
 }
 
 static int on_message_complete_cb(http_parser *parser)
 {
-    player_t *player_config = (player_t*) parser->data;
-    player_config->media_stream->eof = true;
+    Player *player_config = (Player*) parser->data;
+    player_config->getMediaStream()->eof = true;
 
     return 0;
 }
@@ -149,7 +149,7 @@ void WebRadio::web_radio_stop()
 {
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
 
-    audio_player_stop(player_config);
+    player_config->audio_player_stop();
     // reader task terminates itself
 }
 
@@ -164,7 +164,7 @@ void web_radio_gpio_handler_task(void *pvParams)
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             ESP_LOGI(TAG, "GPIO[%d] intr, val: %d", io_num, gpio_get_level((gpio_num_t)io_num));
 
-            switch (get_player_status()) {
+            switch (config->getPlayer()->get_player_status()) {
                 case RUNNING:
                     ESP_LOGI(TAG, "stopping player");
                     config->web_radio_stop();
@@ -176,7 +176,7 @@ void web_radio_gpio_handler_task(void *pvParams)
                     break;
 
                 default:
-                    ESP_LOGI(TAG, "player state: %d", get_player_status());
+                    ESP_LOGI(TAG, "player state: %d", config->getPlayer()->get_player_status());
             }
         }
     }
@@ -185,15 +185,15 @@ void web_radio_gpio_handler_task(void *pvParams)
 void WebRadio::web_radio_init()
 {
     // controls_init(web_radio_gpio_handler_task, 2048, config);
-    audio_player_init(player_config);
+    player_config->audio_player_init();
 }
 
 void WebRadio::web_radio_destroy()
 {
     //controls_destroy(config);
-    audio_player_destroy(player_config);
+    player_config->audio_player_destroy();
 }
 
-WebRadio::WebRadio(const char* u, player_t* config): url(u), player_config(config)
+WebRadio::WebRadio(const char* u, Player* config): url(u), player_config(config)
 {
 }

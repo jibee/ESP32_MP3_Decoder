@@ -11,6 +11,11 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #ifndef max
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #endif
@@ -80,5 +85,9 @@ size_t buf_write(buffer_t *buf, const void* from, size_t len);
 
 /* todo: move elsewhere */
 size_t fill_read_buffer(buffer_t *buf);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _INCLUDE_COMMON_BUFFER_H_ */

@@ -17,30 +17,39 @@
 #include "driver/i2s.h"
 #include "MerusAudio.h"
 
-#include "audio_player.h"
-#include "audio_renderer.h"
+#include "audio_player.hpp"
+#include "audio_renderer.hpp"
+
+#include "playerconfig.h"
 
 #define TAG "renderer"
 
 
-static renderer_config_t *renderer_instance = NULL;
+// TODO see if this could be statically initialised
+static Renderer* renderer_instance = NULL;
+
+Renderer& Renderer::instance()
+{
+    return *renderer_instance;
+}
+
 static component_status_t renderer_status = UNINITIALIZED;
 static QueueHandle_t i2s_event_queue;
 
-static void init_i2s(renderer_config_t *config)
+void Renderer::init_i2s()
 {
-    i2s_mode_t mode = I2S_MODE_MASTER | I2S_MODE_TX;
-    i2s_comm_format_t comm_fmt = I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB;
+    i2s_mode_t mode = (i2s_mode_t) (I2S_MODE_MASTER | I2S_MODE_TX);
+    i2s_comm_format_t comm_fmt = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB);
 
-    if(config->output_mode == DAC_BUILT_IN)
+    if(output_mode == DAC_BUILT_IN)
     {
-        mode = mode | I2S_MODE_DAC_BUILT_IN;
-        comm_fmt = I2S_COMM_FORMAT_I2S_MSB;
+        mode = (i2s_mode_t)(mode | I2S_MODE_DAC_BUILT_IN);
+        comm_fmt = (i2s_comm_format_t)I2S_COMM_FORMAT_I2S_MSB;
     }
 
-    if(config->output_mode == PDM)
+    if(output_mode == PDM)
     {
-        mode = mode | I2S_MODE_PDM;
+        mode = (i2s_mode_t) (mode | I2S_MODE_PDM);
     }
 
     /*
@@ -52,36 +61,34 @@ static void init_i2s(renderer_config_t *config)
      * 16 bit: 32 * 256 = 8192 bytes
      * 32 bit: 32 * 256 = 16384 bytes
      */
-    i2s_config_t i2s_config = {
-            .mode = mode,          // Only TX
-            .sample_rate = config->sample_rate,
-            .bits_per_sample = config->bit_depth,
-            .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,   // 2-channels
-            .communication_format = comm_fmt,
-            .dma_buf_count = 32,                            // number of buffers, 128 max.
-            .dma_buf_len = 64,                          // size of each buffer
-            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1        // Interrupt level 1
-    };
+    i2s_config_t i2s_config;
+    i2s_config.mode = mode;          // Only TX
+    i2s_config.sample_rate = sample_rate;
+    i2s_config.bits_per_sample = bit_depth;
+    i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;   // 2-channels
+    i2s_config.communication_format = comm_fmt;
+    i2s_config.dma_buf_count = 32;                            // number of buffers, 128 max.
+    i2s_config.dma_buf_len = 64;                          // size of each buffer
+    i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1;        // Interrupt level 1
 
-    i2s_pin_config_t pin_config = {
-            .bck_io_num = GPIO_NUM_26,
-            .ws_io_num = GPIO_NUM_25,
-            .data_out_num = GPIO_NUM_22,
-            .data_in_num = I2S_PIN_NO_CHANGE
-    };
+    i2s_pin_config_t pin_config;
+    pin_config.bck_io_num = GPIO_NUM_26;
+    pin_config.ws_io_num = GPIO_NUM_25;
+    pin_config.data_out_num = GPIO_NUM_22;
+    pin_config.data_in_num = I2S_PIN_NO_CHANGE;
 
-    i2s_driver_install(config->i2s_num, &i2s_config, 1, &i2s_event_queue);
+    i2s_driver_install(i2s_num, &i2s_config, 1, &i2s_event_queue);
 
     if((mode & I2S_MODE_DAC_BUILT_IN) || (mode & I2S_MODE_PDM))
     {
-        i2s_set_pin(config->i2s_num, NULL);
+        i2s_set_pin(i2s_num, NULL);
         i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN);
     }
     else {
-        i2s_set_pin(config->i2s_num, &pin_config);
+        i2s_set_pin(i2s_num, &pin_config);
     }
 
-    i2s_stop(config->i2s_num);
+    i2s_stop(i2s_num);
 }
 
 /**
@@ -90,7 +97,7 @@ static void init_i2s(renderer_config_t *config)
  *
  * ESP32 is little-endian.
  */
-void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
+void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
 {
     //ESP_LOGI(TAG, "buf_desc: bit_depth %d format %d num_chan %d sample_rate %d", buf_desc->bit_depth, buf_desc->buffer_format, buf_desc->num_channels, buf_desc->sample_rate);
     //ESP_LOGI(TAG, "renderer_instance: bit_depth %d, output_mode %d", renderer_instance->bit_depth, renderer_instance->output_mode);
@@ -170,30 +177,34 @@ void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
 
             bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &sample, portMAX_DELAY);
         }
-        else {
+	else {
 
-            switch (renderer_instance->bit_depth)
-            {
-                case I2S_BITS_PER_SAMPLE_16BIT:
-                    ; // workaround
+	    switch (renderer_instance->bit_depth)
+	    {
+		case I2S_BITS_PER_SAMPLE_16BIT:
+		    {
+			; // workaround
 
-                    /* low - high / low - high */
-                    const char samp32[4] = {ptr_l[0], ptr_l[1], ptr_r[0], ptr_r[1]};
+			/* low - high / low - high */
+			const char samp32[4] = {ptr_l[0], ptr_l[1], ptr_r[0], ptr_r[1]};
 
-                    bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &samp32, portMAX_DELAY);
-                    break;
+			bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &samp32, portMAX_DELAY);
+			break;
+		    }
+		case I2S_BITS_PER_SAMPLE_32BIT:
+		    {
+			; // workaround
 
-                case I2S_BITS_PER_SAMPLE_32BIT:
-                    ; // workaround
-
-                    const char samp64[8] = {0, 0, ptr_l[0], ptr_l[1], 0, 0, ptr_r[0], ptr_r[1]};
-                    bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &samp64, portMAX_DELAY);
-                    break;
-
-                default:
-                    ESP_LOGE(TAG, "bit depth unsupported: %d", renderer_instance->bit_depth);
-            }
-        }
+			const char samp64[8] = {0, 0, ptr_l[0], ptr_l[1], 0, 0, ptr_r[0], ptr_r[1]};
+			bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &samp64, portMAX_DELAY);
+			break;
+		    }
+		default:
+		    {
+			ESP_LOGE(TAG, "bit depth unsupported: %d", renderer_instance->bit_depth);
+		    }
+	    }
+	}
 
         // DMA buffer full - retry
         if (bytes_pushed == 0) {
@@ -215,58 +226,81 @@ void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
 }
 
 
-void renderer_zero_dma_buffer()
+void Renderer::renderer_zero_dma_buffer()
 {
     i2s_zero_dma_buffer(renderer_instance->i2s_num);
 }
 
 
-renderer_config_t *renderer_get()
+Renderer* renderer_get()
 {
     return renderer_instance;
 }
 
 
 /* init renderer sink */
-void renderer_init(renderer_config_t *config)
+void Renderer::renderer_init()
 {
     // update global
-    renderer_instance = config;
+    renderer_instance = this;
     renderer_status = INITIALIZED;
 
-    ESP_LOGI(TAG, "init I2S mode %d, port %d, %d bit, %d Hz", config->output_mode, config->i2s_num, config->bit_depth, config->sample_rate);
-    init_i2s(config);
+    ESP_LOGI(TAG, "init I2S mode %d, port %d, %d bit, %d Hz", output_mode, i2s_num, bit_depth, sample_rate);
+    init_i2s();
 
-    if(config->output_mode == I2S_MERUS) {
+    if(output_mode == I2S_MERUS) {
         init_ma120(0x50); // setup ma120x0p and initial volume
     }
 }
 
 
-void renderer_start()
+void Renderer::renderer_start()
 {
     if(renderer_status == RUNNING)
         return;
 
     renderer_status = RUNNING;
-    i2s_start(renderer_instance->i2s_num);
+    i2s_start(i2s_num);
 
     // buffer might contain noise
-    i2s_zero_dma_buffer(renderer_instance->i2s_num);
+    i2s_zero_dma_buffer(i2s_num);
 }
 
-void renderer_stop()
+void Renderer::renderer_stop()
 {
     if(renderer_status == STOPPED)
         return;
 
     renderer_status = STOPPED;
-    i2s_stop(renderer_instance->i2s_num);
+    i2s_stop(i2s_num);
 }
 
-void renderer_destroy()
+void Renderer::renderer_destroy()
 {
     renderer_status = UNINITIALIZED;
-    i2s_driver_uninstall(renderer_instance->i2s_num);
+    i2s_driver_uninstall(i2s_num);
 }
+
+i2s_bits_per_sample_t Renderer::getBitDepth() const
+{
+    return bit_depth;
+}
+
+Renderer::Renderer()
+{
+    bit_depth = I2S_BITS_PER_SAMPLE_16BIT;
+    i2s_num = I2S_NUM_0;  
+    sample_rate = 44100;  
+    sample_rate_modifier = 1.0;
+    output_mode = 0==AUDIO_OUTPUT_MODE?I2S:(1==AUDIO_OUTPUT_MODE?I2S_MERUS:(2==AUDIO_OUTPUT_MODE?DAC_BUILT_IN:(3==AUDIO_OUTPUT_MODE?PDM:I2S)));
+
+    if(output_mode == I2S_MERUS) {
+	bit_depth = I2S_BITS_PER_SAMPLE_32BIT;
+    }                                      
+
+    if(output_mode == DAC_BUILT_IN) {
+	bit_depth = I2S_BITS_PER_SAMPLE_16BIT;
+    }      
+}
+
 

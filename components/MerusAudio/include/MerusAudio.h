@@ -3,6 +3,11 @@
 #define _MERUSAUDIO_H_
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void i2c_master_init();
 
 esp_err_t ma_write_byte(uint8_t address, uint8_t value);
@@ -13,6 +18,11 @@ uint8_t ma_read_byte(uint8_t address);
 esp_err_t ma_read(uint8_t address, uint8_t *rbuf, uint8_t n);
 
 void init_ma120(uint8_t vol);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif /* _MERUSAUDIO_H_  */
 

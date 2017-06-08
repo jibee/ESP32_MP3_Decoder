@@ -8,21 +8,21 @@
 #ifndef INCLUDE_WEB_RADIO_H_
 #define INCLUDE_WEB_RADIO_H_
 
-#include "audio_player.h"
+#include "audio_player.hpp"
 
 class WebRadio
 {
     private:
 	const char *url;
-	player_t *player_config;
+	Player* player_config;
 
     public:
 	const char* getUrl() const { return url; };
-	player_t* getPlayer() const { return player_config; };
+	Player* getPlayer() const { return player_config; };
 	typedef struct {
 	} radio_controls_t;
 
-	WebRadio(const char* url, player_t* config);
+	WebRadio(const char* url, Player* config);
 
 	void web_radio_init();
 	void web_radio_start();

@@ -12,24 +12,10 @@
 #include "driver/i2s.h"
 #include "common_component.h"
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 typedef enum {
     I2S, I2S_MERUS, DAC_BUILT_IN, PDM
 } output_mode_t;
 
-
-typedef struct
-{
-    output_mode_t output_mode;
-    int sample_rate;
-    float sample_rate_modifier;
-    i2s_bits_per_sample_t bit_depth;
-    i2s_port_t i2s_num;
-} renderer_config_t;
 
 /* ESP32 is Little Endian, I2S is Big Endian.
  *
@@ -55,20 +41,33 @@ typedef struct
     pcm_endianness_t endianness; // currently unused
 } pcm_format_t;
 
+class Renderer{
+    private:
+	output_mode_t output_mode;
+	int sample_rate;
+	float sample_rate_modifier;
+	i2s_bits_per_sample_t bit_depth;
+	i2s_port_t i2s_num;
 
-/* generic renderer interface */
-void render_samples(char *buf, uint32_t len, pcm_format_t *format);
+	void init_i2s();
 
-void renderer_init(renderer_config_t *config);
-void renderer_start();
-void renderer_stop();
-void renderer_destroy();
+    public:
+	Renderer();
+	/* generic renderer interface */
+	void render_samples(char *buf, uint32_t len, pcm_format_t *format);
 
-void renderer_zero_dma_buffer();
-renderer_config_t *renderer_get();
+	void renderer_init();
+	void renderer_start();
+	void renderer_stop();
+	void renderer_destroy();
 
-#ifdef __cplusplus
-}
-#endif
+	void renderer_zero_dma_buffer();
+	static Renderer& instance();
+
+	i2s_bits_per_sample_t getBitDepth() const;
+};
+
+
+
 
 #endif /* INCLUDE_AUDIO_RENDERER_H_ */

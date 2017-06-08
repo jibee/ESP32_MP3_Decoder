@@ -16,7 +16,7 @@
 
 #include "ui.h"
 #include "spiram_fifo.h"
-#include "audio_renderer.h"
+#include "audio_renderer.hpp"
 #include "web_radio.h"
 #include "playerconfig.h"
 #include "wifi.h"
@@ -78,24 +78,9 @@ static void start_wifi()
     ui_queue_event(UI_CONNECTED);
 }
 
-static renderer_config_t *create_renderer_config()
+static Renderer* create_renderer_config()
 {
-    renderer_config_t *renderer_config = (renderer_config_t*) calloc(1, sizeof(renderer_config_t));
-
-    renderer_config->bit_depth = I2S_BITS_PER_SAMPLE_16BIT;
-    renderer_config->i2s_num = I2S_NUM_0;
-    renderer_config->sample_rate = 44100;
-    renderer_config->sample_rate_modifier = 1.0;
-    renderer_config->output_mode = 0==AUDIO_OUTPUT_MODE?I2S:(1==AUDIO_OUTPUT_MODE?I2S_MERUS:(2==AUDIO_OUTPUT_MODE?DAC_BUILT_IN:(3==AUDIO_OUTPUT_MODE?PDM:I2S)));
-
-    if(renderer_config->output_mode == I2S_MERUS) {
-        renderer_config->bit_depth = I2S_BITS_PER_SAMPLE_32BIT;
-    }
-
-    if(renderer_config->output_mode == DAC_BUILT_IN) {
-        renderer_config->bit_depth = I2S_BITS_PER_SAMPLE_16BIT;
-    }
-
+    Renderer* renderer_config = new Renderer();
     return renderer_config;
 }
 const char* play_url = PLAY_URL;
@@ -104,17 +89,12 @@ static void start_web_radio()
 {
 
     // init player config
-    player_t* player_config = (player_t*) calloc(1, sizeof(player_t));
-    player_config->command = CMD_NONE;
-    player_config->decoder_status = UNINITIALIZED;
-    player_config->decoder_command = CMD_NONE;
-    player_config->buffer_pref = BUF_PREF_SAFE;
-    player_config->media_stream = (media_stream_t*)calloc(1, sizeof(media_stream_t));
+    Player* player_config = new Player();
 
     // init web radio
     WebRadio *radio_config = new WebRadio(play_url, player_config);
     // init renderer
-    renderer_init(create_renderer_config());
+    create_renderer_config()->renderer_init();
 
     // start radio
     radio_config->web_radio_init();

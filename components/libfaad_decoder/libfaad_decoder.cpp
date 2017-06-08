@@ -24,9 +24,12 @@
 //#include "../libfaad/structs.h"
 
 #include "common_buffer.h"
+extern "C"
+{
 #include "m4a.h"
-#include "audio_renderer.h"
-#include "audio_player.h"
+}
+#include "audio_renderer.hpp"
+#include "audio_player.hpp"
 #include "spiram_fifo.h"
 
 #define CODEC_ERROR -1
@@ -86,7 +89,7 @@ void print_frame_info(NeAACDecFrameInfo *frame_info)
 void libfaac_decoder_task(void *pvParameters)
 {
 
-    player_t *player = pvParameters;
+    Player *player = (Player*) pvParameters;
     /* Note that when dealing with QuickTime/MPEG4 files, terminology is
      * a bit confusing. Files with sound are split up in chunks, where
      * each chunk contains one or more samples. Each sample in turn
@@ -117,10 +120,9 @@ void libfaac_decoder_task(void *pvParameters)
     bool empty_first_frame = false;
 
 
-    buffer_t buf = {
-        .len=FAAD_BYTE_BUFFER_SIZE
-    };
-    buf.base = calloc(FAAD_BYTE_BUFFER_SIZE, sizeof(uint8_t));
+    buffer_t buf;
+    buf.len=FAAD_BYTE_BUFFER_SIZE;
+    buf.base = (uint8_t*) calloc(FAAD_BYTE_BUFFER_SIZE, sizeof(uint8_t));
     buf.read_pos = buf.base;
     buf.fill_pos = buf.base;
 
@@ -133,7 +135,7 @@ void libfaac_decoder_task(void *pvParameters)
     //for(uint8_t *i = buf.read_pos; i < buf.fill_pos; i++)
     //    printf("%X", (*i));
 
-    content_type_t content_type =  player->media_stream->content_type;
+    content_type_t content_type =  player->getMediaStream()->content_type;
     ESP_LOGI(TAG, "content_type: %d", content_type);
 
     if(content_type == AUDIO_MP4) {
@@ -162,8 +164,8 @@ void libfaac_decoder_task(void *pvParameters)
     }
 
     NeAACDecConfigurationPtr conf = NeAACDecGetCurrentConfiguration(decoder);
-    renderer_config_t *renderer = renderer_get();
-    switch(renderer->bit_depth) {
+    Renderer& renderer = Renderer::instance();
+    switch(renderer.getBitDepth()) {
         case I2S_BITS_PER_SAMPLE_8BIT:
         case I2S_BITS_PER_SAMPLE_16BIT:
             conf->outputFormat = FAAD_FMT_16BIT;
@@ -207,12 +209,13 @@ void libfaac_decoder_task(void *pvParameters)
         .sample_rate = samp_rate,
         .bit_depth = I2S_BITS_PER_SAMPLE_16BIT,
         .num_channels = chan,
-        .buffer_format = PCM_INTERLEAVED
+        .buffer_format = PCM_INTERLEAVED,
+	.endianness = PCM_BIG_ENDIAN
     };
 
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
 
-    while (!player->media_stream->eof) {
+    while (!player->getMediaStream()->eof) {
 
         /* Request the required number of bytes from the input buffer */
         fill_read_buffer(&buf);
@@ -235,8 +238,8 @@ void libfaac_decoder_task(void *pvParameters)
         frame_samples = frame_info.samples >> 1;
         framelength = frame_samples - lead_trim;
 
-        char *pcm_buf = ret;
-        render_samples(pcm_buf, frame_info.samples * 2, &pcm_fmt);
+        char *pcm_buf = (char*)ret;
+        Renderer::instance().render_samples(pcm_buf, frame_info.samples * 2, &pcm_fmt);
 
         // ESP_LOGI(TAG, "stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
     }
