@@ -32,7 +32,7 @@
 #include "../bt_speaker/bt_app_av.h"
 #include "../bt_speaker/bt_app_core.h"
 
-#include "audio_renderer.h"
+#include "audio_renderer.hpp"
 
 /* event for handler "bt_av_hdl_stack_up */
 enum {
@@ -43,7 +43,7 @@ enum {
 static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 
 
-void bt_speaker_start(renderer_config_t *renderer_config)
+void bt_speaker_start(Renderer* renderer_config)
 {
 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
@@ -68,7 +68,7 @@ void bt_speaker_start(renderer_config_t *renderer_config)
     }
 
     /* init renderer */
-    renderer_init(renderer_config);
+    renderer_config->renderer_init();
 
     /* create application task */
     bt_app_task_start_up();

@@ -30,7 +30,7 @@
 #include "freertos/FreeRTOS.h"
 #include "driver/i2s.h"
 
-#include "audio_renderer.h"
+#include "audio_renderer.hpp"
 
 /* a2dp event handler */
 static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param);
@@ -45,7 +45,8 @@ static pcm_format_t bt_buffer_fmt = {
     .sample_rate = 44100,
     .bit_depth = I2S_BITS_PER_SAMPLE_16BIT,
     .num_channels = 2,
-    .buffer_format = PCM_INTERLEAVED
+    .buffer_format = PCM_INTERLEAVED,
+    .endianness = PCM_BIG_ENDIAN
 };
 
 
@@ -68,7 +69,7 @@ void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 /* cb with decoded samples */
 void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
 {
-    render_samples((char *)data, len, &bt_buffer_fmt);
+    Renderer::instance().render_samples((char *)data, len, &bt_buffer_fmt);
     if (++m_pkt_cnt % 100 == 0) {
         ESP_LOGE(BT_AV_TAG, "audio data pkt cnt %u", m_pkt_cnt);
     }
@@ -104,7 +105,7 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
         m_audio_state = a2d->audio_stat.state;
         if (ESP_A2D_AUDIO_STATE_STARTED == a2d->audio_stat.state) {
             m_pkt_cnt = 0;
-            renderer_start();
+            Renderer::instance().renderer_start();
         }
         break;
     }
