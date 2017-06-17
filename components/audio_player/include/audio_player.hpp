@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include "common_component.h"
 
-
+class Renderer;
 
 typedef enum {
     CMD_NONE, CMD_START, CMD_STOP
@@ -39,8 +39,10 @@ class Player {
 	component_status_t decoder_status;
 	buffer_pref_t buffer_pref;
 	media_stream_t *media_stream;
+
+	Renderer* renderer;
     public:
-	Player();
+	Player(Renderer * r);
 
 	static int audio_stream_consumer(const char *recv_buf, ssize_t bytes_read, void *user_data);
 	void set_player_status(component_status_t);
@@ -56,6 +58,7 @@ class Player {
 	int start_decoder_task();
 
 	media_stream_t* getMediaStream();
+        Renderer* getRenderer();
 };
 
 

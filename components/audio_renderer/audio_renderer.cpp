@@ -25,14 +25,6 @@
 #define TAG "renderer"
 
 
-// TODO see if this could be statically initialised
-static Renderer* renderer_instance = NULL;
-
-Renderer& Renderer::instance()
-{
-    return *renderer_instance;
-}
-
 static component_status_t renderer_status = UNINITIALIZED;
 static QueueHandle_t i2s_event_queue;
 
@@ -103,22 +95,22 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
     //ESP_LOGI(TAG, "renderer_instance: bit_depth %d, output_mode %d", renderer_instance->bit_depth, renderer_instance->output_mode);
 
     // handle changed sample rate
-    if(renderer_instance->sample_rate != buf_desc->sample_rate)
+    if(sample_rate != buf_desc->sample_rate)
     {
-        ESP_LOGI(TAG, "changing sample rate from %d to %d", renderer_instance->sample_rate, buf_desc->sample_rate);
-        uint32_t rate = buf_desc->sample_rate * renderer_instance->sample_rate_modifier;
-        i2s_set_sample_rates(renderer_instance->i2s_num, rate);
-        renderer_instance->sample_rate = buf_desc->sample_rate;
+        ESP_LOGI(TAG, "changing sample rate from %d to %d", sample_rate, buf_desc->sample_rate);
+        uint32_t rate = buf_desc->sample_rate * sample_rate_modifier;
+        i2s_set_sample_rates(i2s_num, rate);
+        sample_rate = buf_desc->sample_rate;
     }
 
     uint8_t buf_bytes_per_sample = (buf_desc->bit_depth / 8);
     uint32_t num_samples = buf_len / buf_bytes_per_sample / buf_desc->num_channels;
 
     // formats match, we can write the whole block
-    if (buf_desc->bit_depth == renderer_instance->bit_depth
+    if (buf_desc->bit_depth == bit_depth
             && buf_desc->buffer_format == PCM_INTERLEAVED
             && buf_desc->num_channels == 2
-            && renderer_instance->output_mode != DAC_BUILT_IN) {
+            && output_mode != DAC_BUILT_IN) {
 
         // do not wait longer than the duration of the buffer
         // TickType_t max_wait = buf_desc->sample_rate / num_samples / 2;
@@ -127,7 +119,7 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
         int bytes_left = buf_len;
         int bytes_written = 0;
         while(bytes_left > 0) {
-            bytes_written = i2s_write_bytes(renderer_instance->i2s_num, buf, bytes_left, 0);
+            bytes_written = i2s_write_bytes(i2s_num, buf, bytes_left, 0);
             bytes_left -= bytes_written;
             buf += bytes_written;
         }
@@ -159,9 +151,9 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
 
     int bytes_pushed = 0;
     for (int i = 0; i < num_samples; i++) {
-        if (renderer_status == STOPPED) break;
+        if(STOPPED == renderer_status) break;
 
-        if(renderer_instance->output_mode == DAC_BUILT_IN)
+        if(DAC_BUILT_IN == output_mode)
         {
             // assume 16 bit src bit_depth
             short left = *(short *) ptr_l;
@@ -175,11 +167,11 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
             uint32_t sample = (uint16_t) left;
             sample = (sample << 16 & 0xffff0000) | ((uint16_t) right);
 
-            bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &sample, portMAX_DELAY);
+            bytes_pushed = i2s_push_sample(i2s_num, (const char*) &sample, portMAX_DELAY);
         }
 	else {
 
-	    switch (renderer_instance->bit_depth)
+	    switch (bit_depth)
 	    {
 		case I2S_BITS_PER_SAMPLE_16BIT:
 		    {
@@ -188,7 +180,7 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
 			/* low - high / low - high */
 			const char samp32[4] = {ptr_l[0], ptr_l[1], ptr_r[0], ptr_r[1]};
 
-			bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &samp32, portMAX_DELAY);
+			bytes_pushed = i2s_push_sample(i2s_num, (const char*) &samp32, portMAX_DELAY);
 			break;
 		    }
 		case I2S_BITS_PER_SAMPLE_32BIT:
@@ -196,12 +188,12 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
 			; // workaround
 
 			const char samp64[8] = {0, 0, ptr_l[0], ptr_l[1], 0, 0, ptr_r[0], ptr_r[1]};
-			bytes_pushed = i2s_push_sample(renderer_instance->i2s_num, (const char*) &samp64, portMAX_DELAY);
+			bytes_pushed = i2s_push_sample(i2s_num, (const char*) &samp64, portMAX_DELAY);
 			break;
 		    }
 		default:
 		    {
-			ESP_LOGE(TAG, "bit depth unsupported: %d", renderer_instance->bit_depth);
+			ESP_LOGE(TAG, "bit depth unsupported: %d", bit_depth);
 		    }
 	    }
 	}
@@ -228,21 +220,13 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
 
 void Renderer::renderer_zero_dma_buffer()
 {
-    i2s_zero_dma_buffer(renderer_instance->i2s_num);
-}
-
-
-Renderer* renderer_get()
-{
-    return renderer_instance;
+    i2s_zero_dma_buffer(i2s_num);
 }
 
 
 /* init renderer sink */
 void Renderer::renderer_init()
 {
-    // update global
-    renderer_instance = this;
     renderer_status = INITIALIZED;
 
     ESP_LOGI(TAG, "init I2S mode %d, port %d, %d bit, %d Hz", output_mode, i2s_num, bit_depth, sample_rate);

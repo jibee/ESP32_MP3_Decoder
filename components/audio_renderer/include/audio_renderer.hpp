@@ -62,7 +62,6 @@ class Renderer{
 	void renderer_destroy();
 
 	void renderer_zero_dma_buffer();
-	static Renderer& instance();
 
 	i2s_bits_per_sample_t getBitDepth() const;
 };

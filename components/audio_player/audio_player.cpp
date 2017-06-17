@@ -14,7 +14,7 @@
 #include "esp_system.h"
 #include "esp_log.h"
 
-#include "fdk_aac_decoder.h"
+#include "fdk_aac_decoder.hpp"
 #include "libfaad_decoder.h"
 #include "mp3_decoder.h"
 #include "controls.h"
@@ -128,19 +128,19 @@ void Player::audio_player_init()
 
 void Player::audio_player_destroy()
 {
-    Renderer::instance().renderer_destroy();
+    renderer->renderer_destroy();
     player_status = UNINITIALIZED;
 }
 
 void Player::audio_player_start()
 {
-    Renderer::instance().renderer_start();
+    renderer->renderer_start();
     player_status = RUNNING;
 }
 
 void Player::audio_player_stop()
 {
-    Renderer::instance().renderer_stop();
+    renderer->renderer_stop();
     player_status = STOPPED;
 }
 
@@ -169,7 +169,7 @@ void Player::set_player_status(component_status_t c)
     decoder_status = c;
 }
 
-Player::Player()
+Player::Player(Renderer* r): renderer(r)
 {
     command = CMD_NONE;
     decoder_status = UNINITIALIZED;
@@ -177,4 +177,10 @@ Player::Player()
     buffer_pref = BUF_PREF_SAFE;
     media_stream = new media_stream_t();
 }
+
+Renderer * Player::getRenderer()
+{
+    return renderer;
+}
+
 

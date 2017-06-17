@@ -3,9 +3,9 @@
 
 
 /* MP3 stream */
-#if 1
+#if 0
 //#define PLAY_URL "http://cdn.nrjaudio.fm/audio1/fr/30201/mp3_128.mp3?origine=fluxradios"
-#define PLAY_URL "http://cdn.nrjaudio.fm/audio1/fr/30201/mp3_128.mp3"
+//#define PLAY_URL "http://cdn.nrjaudio.fm/audio1/fr/30201/mp3_128.mp3"
 //#define PLAY_URL "http://185.52.127.160/fr/30201/mp3_128.mp3"
 #endif
 
@@ -24,7 +24,7 @@
 #define PLAY_URL "http://yourhost/some_file.m4a"
 #endif
 
-#if 0
+#if 1
 #define PLAY_URL "http://mp3ad.egofm.c.nmdn.net/ps-egofmraw_192/livestream.mp3"
 #endif
 

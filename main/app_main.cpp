@@ -88,13 +88,14 @@ const char* play_url = PLAY_URL;
 static void start_web_radio()
 {
 
+    // init renderer
+    Renderer* renderer = new Renderer();
     // init player config
-    Player* player_config = new Player();
+    Player* player_config = new Player(renderer);
 
     // init web radio
     WebRadio *radio_config = new WebRadio(play_url, player_config);
-    // init renderer
-    create_renderer_config()->renderer_init();
+    renderer->renderer_init();
 
     // start radio
     radio_config->web_radio_init();
@@ -114,7 +115,7 @@ void app_main()
     init_hardware();
 
 #ifdef CONFIG_BT_SPEAKER_MODE
-    bt_speaker_start(create_renderer_config());
+    BtAudioSpeaker::instance().bt_speaker_start(create_renderer_config());
 #else
     start_wifi();
     start_web_radio();

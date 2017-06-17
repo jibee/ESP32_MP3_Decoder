@@ -164,8 +164,7 @@ void libfaac_decoder_task(void *pvParameters)
     }
 
     NeAACDecConfigurationPtr conf = NeAACDecGetCurrentConfiguration(decoder);
-    Renderer& renderer = Renderer::instance();
-    switch(renderer.getBitDepth()) {
+    switch(player->getRenderer()->getBitDepth()) {
         case I2S_BITS_PER_SAMPLE_8BIT:
         case I2S_BITS_PER_SAMPLE_16BIT:
             conf->outputFormat = FAAD_FMT_16BIT;
@@ -239,7 +238,7 @@ void libfaac_decoder_task(void *pvParameters)
         framelength = frame_samples - lead_trim;
 
         char *pcm_buf = (char*)ret;
-        Renderer::instance().render_samples(pcm_buf, frame_info.samples * 2, &pcm_fmt);
+        player->getRenderer()->render_samples(pcm_buf, frame_info.samples * 2, &pcm_fmt);
 
         // ESP_LOGI(TAG, "stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
     }

@@ -33,6 +33,7 @@
 #include "../bt_speaker/bt_app_core.h"
 
 #include "audio_renderer.hpp"
+#include "bt_speaker.h"
 
 /* event for handler "bt_av_hdl_stack_up */
 enum {
@@ -42,8 +43,26 @@ enum {
 /* handler for bluetooth stack enabled events */
 static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 
+BtAudioSpeaker& BtAudioSpeaker::instance()
+{
+    static BtAudioSpeaker instance;
+    return instance;
+}
 
-void bt_speaker_start(Renderer* renderer_config)
+void BtAudioSpeaker::startRenderer()
+{
+    renderer->renderer_start();
+}
+
+void BtAudioSpeaker::renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format)
+{
+    renderer->render_samples((char *)data, len, format);
+}
+
+
+
+
+void BtAudioSpeaker::bt_speaker_start(Renderer* renderer_config)
 {
 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();

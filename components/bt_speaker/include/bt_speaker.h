@@ -12,6 +12,15 @@
 
 class Renderer;
 
-void bt_speaker_start(Renderer* renderer_config);
+class BtAudioSpeaker
+{
+    public:
+	static BtAudioSpeaker& instance();
+	void bt_speaker_start(Renderer* renderer_config);
+        void startRenderer();
+        void renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format);
+    private:
+	Renderer* renderer;
+};
 
 #endif /* _INCLUDE_BT_SPEAKER_H_ */
