@@ -40,13 +40,13 @@ enum {
     BT_APP_EVT_STACK_UP = 0,
 };
 
+BtAudioSpeaker* BtAudioSpeaker::instance_o;
+
 /* handler for bluetooth stack enabled events */
 static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 
-BtAudioSpeaker& BtAudioSpeaker::instance()
+BtAudioSpeaker::BtAudioSpeaker(Renderer * r): renderer(r)
 {
-    static BtAudioSpeaker instance;
-    return instance;
 }
 
 void BtAudioSpeaker::startRenderer()
@@ -59,12 +59,9 @@ void BtAudioSpeaker::renderSamples(const uint8_t *data, uint32_t len, pcm_format
     renderer->render_samples((char *)data, len, format);
 }
 
-
-
-
-void BtAudioSpeaker::bt_speaker_start(Renderer* renderer_config)
+void BtAudioSpeaker::bt_speaker_start()
 {
-
+    instance_o = this;
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
         ESP_LOGE(BT_AV_TAG, "%s initialize controller failed\n", __func__);
@@ -87,7 +84,7 @@ void BtAudioSpeaker::bt_speaker_start(Renderer* renderer_config)
     }
 
     /* init renderer */
-    renderer_config->renderer_init();
+    renderer->renderer_init();
 
     /* create application task */
     bt_app_task_start_up();

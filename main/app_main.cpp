@@ -78,18 +78,11 @@ static void start_wifi()
     ui_queue_event(UI_CONNECTED);
 }
 
-static Renderer* create_renderer_config()
-{
-    Renderer* renderer_config = new Renderer();
-    return renderer_config;
-}
 const char* play_url = PLAY_URL;
 
-static void start_web_radio()
+static void start_web_radio(Renderer* renderer)
 {
 
-    // init renderer
-    Renderer* renderer = new Renderer();
     // init player config
     Player* player_config = new Player(renderer);
 
@@ -114,12 +107,14 @@ void app_main()
 
     init_hardware();
 
+    // init renderer
+    Renderer* renderer = new Renderer();
 #ifdef CONFIG_BT_SPEAKER_MODE
-    BtAudioSpeaker::instance().bt_speaker_start(create_renderer_config());
-#else
-    start_wifi();
-    start_web_radio();
+    BtAudioSpeaker* btspeaker = new BtAudioSpeaker(renderer);
+    btspeaker->bt_speaker_start();
 #endif
+    start_wifi();
+    start_web_radio(renderer);
 
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
     // ESP_LOGI(TAG, "app_main stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
