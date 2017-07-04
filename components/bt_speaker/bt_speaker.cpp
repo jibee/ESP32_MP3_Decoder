@@ -30,7 +30,7 @@
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
 
-#include "audio_renderer.hpp"
+#include "Sink.hpp"
 #include "bt_speaker.h"
 
 
@@ -67,7 +67,7 @@ struct bt_app_msg_t {
 xQueueHandle BtAudioSpeaker::bt_app_task_queue(NULL);
 xTaskHandle BtAudioSpeaker::bt_app_task_handle(NULL);
 
-BtAudioSpeaker::BtAudioSpeaker(Renderer * r): 
+BtAudioSpeaker::BtAudioSpeaker(Sink* r): 
     renderer(r), m_pkt_cnt(0), m_audio_state(ESP_A2D_AUDIO_STATE_STOPPED)
 {
 }
@@ -78,12 +78,12 @@ BtAudioSpeaker::BtAudioSpeaker(Renderer * r):
  */
 void BtAudioSpeaker::startRenderer()
 {
-    renderer->renderer_start();
+    renderer->take(this);
 }
 
 void BtAudioSpeaker::stopRenderer()
 {
-    renderer->renderer_stop();
+    renderer->release(this);
 }
 
 /** Submit samples for rendering.
@@ -92,7 +92,7 @@ void BtAudioSpeaker::stopRenderer()
  */
 void BtAudioSpeaker::renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format)
 {
-    renderer->render_samples((char *)data, len, format);
+    renderer->play(this, (char *)data, len, format);
     if (++m_pkt_cnt % 100 == 0) {
         ESP_LOGE(BT_AV_TAG, "audio data pkt cnt %u", m_pkt_cnt);
     }

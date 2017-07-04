@@ -10,11 +10,11 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "audio_renderer.hpp"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
+#include "Source.hpp"
 
-class Renderer;
+class Sink;
 
 class _BtAudioSpeaker_impl;
 struct bt_app_msg_t;
@@ -28,10 +28,10 @@ typedef void (* bt_app_cb_t) (uint16_t event, void *param);
  */
 typedef void (* bt_app_copy_cb_t) (bt_app_msg_t *msg, void *p_dest, void *p_src);
 
-class BtAudioSpeaker
+class BtAudioSpeaker: public Source
 {
     public:
-	BtAudioSpeaker(Renderer* renderer);
+	BtAudioSpeaker(Sink* renderer);
 	void bt_speaker_start();
     private:
 	static BtAudioSpeaker* instance(){ return instance_o; };
@@ -77,7 +77,7 @@ class BtAudioSpeaker
 	void renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format);
 	void stopRenderer();
 
-	Renderer* renderer;
+	Sink* renderer;
 	_BtAudioSpeaker_impl* impl;
 	static BtAudioSpeaker* instance_o;
 	uint32_t m_pkt_cnt;

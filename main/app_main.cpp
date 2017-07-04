@@ -112,7 +112,7 @@ void app_main()
     renderer->renderer_init();
     Sink* sink = new Sink(renderer);
 #ifdef CONFIG_BT_SPEAKER_MODE
-    BtAudioSpeaker* btspeaker = new BtAudioSpeaker(renderer);
+    BtAudioSpeaker* btspeaker = new BtAudioSpeaker(sink);
     btspeaker->bt_speaker_start();
 #endif
     start_wifi();
