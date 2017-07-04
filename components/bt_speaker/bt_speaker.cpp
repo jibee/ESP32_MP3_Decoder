@@ -38,6 +38,8 @@
 #define BT_APP_CORE_TAG                   "BT_APP_CORE"
 #define BT_APP_SIG_WORK_DISPATCH          (0x01)
 
+
+/** Static PCM format output by the BT stack */
 static pcm_format_t bt_buffer_fmt = {
     .sample_rate = 44100,
     .bit_depth = I2S_BITS_PER_SAMPLE_16BIT,
@@ -46,15 +48,13 @@ static pcm_format_t bt_buffer_fmt = {
     .endianness = PCM_BIG_ENDIAN
 };
 
-/* event for handler "bt_av_hdl_stack_up */
 enum {
+/* event for handler "bt_av_hdl_stack_up */
     BT_APP_EVT_STACK_UP = 0,
 };
 
+/** Singleton instance */
 BtAudioSpeaker* BtAudioSpeaker::instance_o;
-
-/* handler for bluetooth stack enabled events */
-static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 
 /* message to be sent */
 struct bt_app_msg_t {
@@ -72,11 +72,24 @@ BtAudioSpeaker::BtAudioSpeaker(Renderer * r):
 {
 }
 
+/** Start the audio renderer.
+ *
+ * Calling contexts: ad2p event handler, when playing starts
+ */
 void BtAudioSpeaker::startRenderer()
 {
     renderer->renderer_start();
 }
 
+void BtAudioSpeaker::stopRenderer()
+{
+    renderer->renderer_stop();
+}
+
+/** Submit samples for rendering.
+ *
+ * Calling context: ad2p data handler
+ */
 void BtAudioSpeaker::renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format)
 {
     renderer->render_samples((char *)data, len, format);
@@ -85,6 +98,10 @@ void BtAudioSpeaker::renderSamples(const uint8_t *data, uint32_t len, pcm_format
     }
 }
 
+/** Start the BT speaker.
+ * 
+ * Public method, called from the controlling application
+ */
 void BtAudioSpeaker::bt_speaker_start()
 {
     instance_o = this;
@@ -109,9 +126,6 @@ void BtAudioSpeaker::bt_speaker_start()
         return;
     }
 
-    /* init renderer */
-    renderer->renderer_init();
-
     /* create application task */
     bt_app_task_start_up();
 
@@ -119,8 +133,13 @@ void BtAudioSpeaker::bt_speaker_start()
     bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
 }
 
-
-static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
+/** Handler for Bluetooth stack events.
+ *
+ * Calling context:
+ * Asynchronous call from bt_speaker_start via work_dispatch mechanism.
+ * SMELL: this method's name is misleading - it is not an event handler
+ */
+void BtAudioSpeaker::bt_av_hdl_stack_evt(uint16_t event, void *p_param)
 {
     ESP_LOGD(BT_AV_TAG, "%s evt %d", __func__, event);
     switch (event) {
@@ -148,6 +167,34 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
     }
 }
 
+/** Handler for audio configuration events.
+ * 
+ * Calling context: A2DP stack via callbacks
+ */
+void BtAudioSpeaker::__a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
+{
+    switch (event) {
+    case ESP_A2D_CONNECTION_STATE_EVT:
+    case ESP_A2D_AUDIO_STATE_EVT:
+    case ESP_A2D_AUDIO_CFG_EVT: {
+        bt_app_work_dispatch(bt_av_hdl_a2d_evt, event, param, sizeof(esp_a2d_cb_param_t), NULL);
+        break;
+    }
+    default:
+        ESP_LOGE(BT_AV_TAG, "a2dp invalid cb event: %d", event);
+        break;
+    }
+}
+
+/** Handler for audio configuration events.
+ * 
+ * Calling context: A2DP stack via callback via task handler
+ */
+void BtAudioSpeaker::bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
+{
+    BtAudioSpeaker::instance()->__a2d_event(event, (esp_a2d_cb_param_t*) p_param);
+}
+
 void BtAudioSpeaker::__a2d_event(uint16_t event, esp_a2d_cb_param_t* a2d)
 {
     ESP_LOGD(BT_AV_TAG, "%s evt %d", __func__, event);
@@ -163,6 +210,10 @@ void BtAudioSpeaker::__a2d_event(uint16_t event, esp_a2d_cb_param_t* a2d)
             m_pkt_cnt = 0;
             BtAudioSpeaker::instance()->startRenderer();
         }
+	else if(ESP_A2D_AUDIO_STATE_STARTED == a2d->audio_stat.state)
+	{
+	    BtAudioSpeaker::instance()->stopRenderer();
+	}
         break;
     }
     case ESP_A2D_AUDIO_CFG_EVT: {
@@ -180,26 +231,7 @@ void BtAudioSpeaker::__a2d_event(uint16_t event, esp_a2d_cb_param_t* a2d)
     }
 }
 
-void BtAudioSpeaker::__a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
-{
-    switch (event) {
-    case ESP_A2D_CONNECTION_STATE_EVT:
-    case ESP_A2D_AUDIO_STATE_EVT:
-    case ESP_A2D_AUDIO_CFG_EVT: {
-        bt_app_work_dispatch(bt_av_hdl_a2d_evt, event, param, sizeof(esp_a2d_cb_param_t), NULL);
-        break;
-    }
-    default:
-        ESP_LOGE(BT_AV_TAG, "a2dp invalid cb event: %d", event);
-        break;
-    }
-}
-void BtAudioSpeaker::bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
-{
-    BtAudioSpeaker::instance()->__a2d_event(event, (esp_a2d_cb_param_t*) p_param);
-}
-
-
+// TODO keep annotating below
 void BtAudioSpeaker::bt_app_rc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
 {
     switch (event) {
@@ -235,13 +267,15 @@ void BtAudioSpeaker::bt_av_hdl_avrc_evt(uint16_t event, void *p_param)
     }
 }
 
-/** Bluetooth stack callbacks  */
+
 
 /* callback for A2DP sink */
 void BtAudioSpeaker::bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 {
     BtAudioSpeaker::instance()->__a2d_cb(event, param);
 }
+/** Bluetooth stack callbacks  */
+
 
 /* cb with decoded samples */
 void BtAudioSpeaker::bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)

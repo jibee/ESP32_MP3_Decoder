@@ -18,7 +18,7 @@
 #include "common_buffer.h"
 #include "aacdecoder_lib.h"
 #include "audio_player.hpp"
-#include "audio_renderer.hpp"
+#include "Sink.hpp"
 #include "fdk_aac_decoder.hpp"
 
 extern "C"
@@ -155,7 +155,7 @@ void fdkaac_decoder_task(void *pvParameters)
             pcm_format.sample_rate = mStreamInfo->sampleRate;
         }
 
-        player->getRenderer()->render_samples((char *) pcm_buf->base, pcm_size, &pcm_format);
+        player->getRenderer()->play(nullptr, (char *) pcm_buf->base, pcm_size, &pcm_format);
 
         // ESP_LOGI(TAG, "fdk_aac_decoder stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
         // ESP_LOGI(TAG, "%u free heap %u", __LINE__, esp_get_free_heap_size());

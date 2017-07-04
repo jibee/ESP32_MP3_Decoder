@@ -54,7 +54,7 @@ class Renderer{
     public:
 	Renderer();
 	/* generic renderer interface */
-	void render_samples(char *buf, uint32_t len, pcm_format_t *format);
+	void render_samples(const char *buf, uint32_t len, pcm_format_t *format);
 
 	void renderer_init();
 	void renderer_start();

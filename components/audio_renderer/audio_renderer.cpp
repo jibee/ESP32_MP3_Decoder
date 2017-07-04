@@ -89,7 +89,7 @@ void Renderer::init_i2s()
  *
  * ESP32 is little-endian.
  */
-void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
+void Renderer::render_samples(const char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
 {
     //ESP_LOGI(TAG, "buf_desc: bit_depth %d format %d num_chan %d sample_rate %d", buf_desc->bit_depth, buf_desc->buffer_format, buf_desc->num_channels, buf_desc->sample_rate);
     //ESP_LOGI(TAG, "renderer_instance: bit_depth %d, output_mode %d", renderer_instance->bit_depth, renderer_instance->output_mode);
@@ -134,8 +134,8 @@ void Renderer::render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_des
     }
 
     // pointer to left / right sample position
-    char *ptr_l = buf;
-    char *ptr_r = buf + buf_bytes_per_sample;
+    const char *ptr_l = buf;
+    const char *ptr_r = buf + buf_bytes_per_sample;
     uint8_t stride = buf_bytes_per_sample * 2;
 
     // right half of the buffer contains all the right channel samples

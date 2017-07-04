@@ -17,6 +17,7 @@
 #include "ui.h"
 #include "spiram_fifo.h"
 #include "audio_renderer.hpp"
+#include "Sink.hpp"
 #include "web_radio.h"
 #include "playerconfig.h"
 #include "wifi.h"
@@ -80,7 +81,7 @@ static void start_wifi()
 
 const char* play_url = PLAY_URL;
 
-static void start_web_radio(Renderer* renderer)
+static void start_web_radio(Sink* renderer)
 {
 
     // init player config
@@ -88,7 +89,6 @@ static void start_web_radio(Renderer* renderer)
 
     // init web radio
     WebRadio *radio_config = new WebRadio(play_url, player_config);
-    renderer->renderer_init();
 
     // start radio
     radio_config->web_radio_init();
@@ -109,13 +109,14 @@ void app_main()
 
     // init renderer
     Renderer* renderer = new Renderer();
+    renderer->renderer_init();
+    Sink* sink = new Sink(renderer);
 #ifdef CONFIG_BT_SPEAKER_MODE
     BtAudioSpeaker* btspeaker = new BtAudioSpeaker(renderer);
     btspeaker->bt_speaker_start();
 #endif
     start_wifi();
-    start_web_radio(renderer);
-
+    start_web_radio(sink);
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
     // ESP_LOGI(TAG, "app_main stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
 }

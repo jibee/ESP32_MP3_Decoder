@@ -21,7 +21,7 @@ extern "C"
 }
 
 #include "driver/i2s.h"
-#include "audio_renderer.hpp"
+#include "Sink.hpp"
 #include "audio_player.hpp"
 #include "spiram_fifo.h"
 #include "mp3_decoder.h"
@@ -79,7 +79,7 @@ static enum mad_flow input(struct mad_stream *stream, buffer_t *buf, Player* pla
             buf_underrun_cnt++;
             //We both silence the output as well as wait a while by pushing silent samples into the i2s system.
             //This waits for about 200mS
-            player->getRenderer()->renderer_zero_dma_buffer();
+            player->getRenderer()->playWhite(nullptr);
         } else {
             //Read some bytes from the FIFO to re-fill the buffer.
             fill_read_buffer(buf);
@@ -138,6 +138,8 @@ void mp3_decoder_task(void *pvParameters)
     mad_synth_init(synth);
 
 
+    player->getRenderer()->take(nullptr);
+
     while(1) {
 
         // calls mad_stream_buffer internally
@@ -169,7 +171,7 @@ void mp3_decoder_task(void *pvParameters)
 
     abort:
     // avoid noise
-    player->getRenderer()->renderer_zero_dma_buffer();
+    player->getRenderer()->release(nullptr);
 
     active_player = NULL;
     free(synth);
@@ -202,7 +204,7 @@ void render_sample_block(short *sample_buff_ch0, short *sample_buff_ch1, int num
 {
     mad_buffer_fmt.num_channels = num_channels;
     uint32_t len = num_samples * sizeof(short) * num_channels;
-    active_player->getRenderer()->render_samples((char*) sample_buff_ch0, len, &mad_buffer_fmt);
+    active_player->getRenderer()->play(nullptr, (char*) sample_buff_ch0, len, &mad_buffer_fmt);
     return;
 }
 

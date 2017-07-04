@@ -28,7 +28,7 @@ extern "C"
 {
 #include "m4a.h"
 }
-#include "audio_renderer.hpp"
+#include "Sink.hpp"
 #include "audio_player.hpp"
 #include "spiram_fifo.h"
 
@@ -238,7 +238,7 @@ void libfaac_decoder_task(void *pvParameters)
         framelength = frame_samples - lead_trim;
 
         char *pcm_buf = (char*)ret;
-        player->getRenderer()->render_samples(pcm_buf, frame_info.samples * 2, &pcm_fmt);
+        player->getRenderer()->play(nullptr, pcm_buf, frame_info.samples * 2, &pcm_fmt);
 
         // ESP_LOGI(TAG, "stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
     }

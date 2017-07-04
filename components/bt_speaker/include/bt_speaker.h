@@ -31,12 +31,10 @@ typedef void (* bt_app_copy_cb_t) (bt_app_msg_t *msg, void *p_dest, void *p_src)
 class BtAudioSpeaker
 {
     public:
-	static BtAudioSpeaker* instance(){ return instance_o; };
 	BtAudioSpeaker(Renderer* renderer);
 	void bt_speaker_start();
-	void startRenderer();
-	void renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format);
-
+    private:
+	static BtAudioSpeaker* instance(){ return instance_o; };
 	// API callbacks.
 	void __a2d_event(uint16_t event, esp_a2d_cb_param_t* param);
 	void __a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param);
@@ -61,10 +59,11 @@ class BtAudioSpeaker
 	 */
 	static void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len);
 
-/**
- * @brief     work dispatcher for the application task
- */
+	/**
+	 * @brief     work dispatcher for the application task
+	 */
 	static bool bt_app_work_dispatch(bt_app_cb_t p_cback, uint16_t event, void *p_params, int param_len, bt_app_copy_cb_t p_copy_cback);
+
 
 	static void bt_app_task_handler(void *arg);
 	static bool bt_app_send_msg(bt_app_msg_t *msg);
@@ -74,7 +73,10 @@ class BtAudioSpeaker
 	static void bt_app_task_shut_down();
 
 
-    private:
+	void startRenderer();
+	void renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format);
+	void stopRenderer();
+
 	Renderer* renderer;
 	_BtAudioSpeaker_impl* impl;
 	static BtAudioSpeaker* instance_o;
@@ -82,6 +84,13 @@ class BtAudioSpeaker
 	esp_a2d_audio_state_t m_audio_state;
 	static xQueueHandle bt_app_task_queue;
 	static xTaskHandle bt_app_task_handle;
+	/** Handler for Bluetooth stack events.
+	 *
+	 * Calling context:
+	 * Asynchronous call from bt_speaker_start via work_dispatch mechanism.
+	 * SMELL: this method's name is misleading - it is not an event handler
+	 */
+	static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 };
 
 #endif /* _INCLUDE_BT_SPEAKER_H_ */

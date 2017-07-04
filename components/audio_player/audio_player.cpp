@@ -18,7 +18,7 @@
 #include "libfaad_decoder.h"
 #include "mp3_decoder.h"
 #include "controls.h"
-#include "audio_renderer.hpp"
+#include "Sink.hpp"
 
 #include "audio_player.hpp"
 
@@ -128,19 +128,28 @@ void Player::audio_player_init()
 
 void Player::audio_player_destroy()
 {
+// SMELL: original code was calling
+#if ISOLATED_CODE
     renderer->renderer_destroy();
+#endif
     player_status = UNINITIALIZED;
 }
 
 void Player::audio_player_start()
 {
+// SMELL: original code was calling
+#if ISOLATED_CODE
     renderer->renderer_start();
+#endif
     player_status = RUNNING;
 }
 
 void Player::audio_player_stop()
 {
+// SMELL: original code was calling
+#if ISOLATED_CODE
     renderer->renderer_stop();
+#endif
     player_status = STOPPED;
 }
 
@@ -169,7 +178,7 @@ void Player::set_player_status(component_status_t c)
     decoder_status = c;
 }
 
-Player::Player(Renderer* r): renderer(r)
+Player::Player(Sink* r): renderer(r)
 {
     command = CMD_NONE;
     decoder_status = UNINITIALIZED;
@@ -178,7 +187,7 @@ Player::Player(Renderer* r): renderer(r)
     media_stream = new media_stream_t();
 }
 
-Renderer * Player::getRenderer()
+Sink* Player::getRenderer()
 {
     return renderer;
 }
