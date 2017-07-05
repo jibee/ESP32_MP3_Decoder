@@ -37,11 +37,25 @@ static const uint32_t INPUT_BUFFER_SIZE = 1024;
 #define OUTPUT_BUFFER_SIZE  (MAX_FRAME_SIZE * sizeof(INT_PCM) * MAX_CHANNELS)
 
 
-void fdkaac_decoder_task(void *pvParameters)
+FdkAACDecoder::FdkAACDecoder(Player* player): Decoder(player)
+{
+}
+
+const char* FdkAACDecoder::task_name() const
+{
+    return "fdkaac_decoder_task";
+}
+
+int FdkAACDecoder::stack_depth() const
+{
+    return 6144;
+}
+
+
+void FdkAACDecoder::decoder_task()
 {
     // ESP_LOGI(TAG, "(line %u) free heap: %u", __LINE__, esp_get_free_heap_size());
 
-    Player* player = (Player*) pvParameters;
     AAC_DECODER_ERROR err;
 
     /* allocate sample buffer */
@@ -60,7 +74,7 @@ void fdkaac_decoder_task(void *pvParameters)
     bool first_frame = true;
 
     /* select bitstream format */
-    if (player->getMediaStream()->content_type == AUDIO_MP4) {
+    if (m_player->getMediaStream()->content_type == AUDIO_MP4) {
 
         demux_res_t demux_res;
         stream_t input_stream;
@@ -110,7 +124,7 @@ void fdkaac_decoder_task(void *pvParameters)
 
     ESP_LOGI(TAG, "(line %u) free heap: %u", __LINE__, esp_get_free_heap_size());
 
-    while (!player->getMediaStream()->eof) {
+    while (!m_player->getMediaStream()->eof) {
 
         /* re-fill buffer if necessary */
         if (buf_data_unread(in_buf) == 0) {
@@ -155,7 +169,7 @@ void fdkaac_decoder_task(void *pvParameters)
             pcm_format.sample_rate = mStreamInfo->sampleRate;
         }
 
-        player->getRenderer()->play(nullptr, (char *) pcm_buf->base, pcm_size, &pcm_format);
+        m_player->getRenderer()->play(this, (char *) pcm_buf->base, pcm_size, &pcm_format);
 
         // ESP_LOGI(TAG, "fdk_aac_decoder stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
         // ESP_LOGI(TAG, "%u free heap %u", __LINE__, esp_get_free_heap_size());

@@ -31,31 +31,21 @@ static component_status_t player_status = UNINITIALIZED;
 
 int Player::start_decoder_task()
 {
-    TaskFunction_t task_func;
-    const char * task_name;
-    uint16_t stack_depth;
-
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
-
+    Decoder* decoder = nullptr;
     switch (media_stream->content_type)
     {
         case AUDIO_MPEG:
-            task_func = mp3_decoder_task;
-            task_name = "mp3_decoder_task";
-            stack_depth = 8448;
+	    decoder = new Mp3Decoder(this);
             break;
 
         case AUDIO_MP4:
-            task_func = libfaac_decoder_task;
-            task_name = "libfaac_decoder_task";
-            stack_depth = 55000;
+	    decoder = new LibFaacDecoder(this);
             break;
 
         case AUDIO_AAC:
         case OCTET_STREAM: // probably .aac
-            task_func = fdkaac_decoder_task;
-            task_name = "fdkaac_decoder_task";
-            stack_depth = 6144;
+	    decoder = new FdkAACDecoder(this);
             break;
 
         default:
@@ -63,17 +53,41 @@ int Player::start_decoder_task()
             return -1;
     }
 
-    if (xTaskCreatePinnedToCore(task_func, task_name, stack_depth, this,
-    PRIO_MAD, NULL, 1) != pdPASS) {
+    if(nullptr!=decoder)
+    {
+	int retval = decoder->start();
+	if(0==retval)
+	{
+	    decoder_status = RUNNING;
+	}
+	return retval;
+    }
+    return -1;
+}
+
+int Decoder::start()
+{
+    if (xTaskCreatePinnedToCore(Decoder::decoder_task, task_name(), stack_depth(), this, PRIO_MAD, NULL, 1) != pdPASS) {
         ESP_LOGE(TAG, "ERROR creating decoder task! Out of memory?");
         return -1;
-    } else {
-        decoder_status = RUNNING;
     }
-
-    ESP_LOGI(TAG, "created decoder task: %s", task_name);
-
+    ESP_LOGI(TAG, "created decoder task: %s", task_name());
     return 0;
+}
+
+void Decoder::decoder_task(void *pvParameters)
+{
+    Decoder* o = (Decoder*)pvParameters;
+    o->decoder_task();
+    delete o;
+}
+
+Decoder::Decoder(Player* player): m_player(player)
+{
+}
+
+Decoder::~Decoder()
+{
 }
 
 static int t;

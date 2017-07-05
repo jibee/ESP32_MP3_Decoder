@@ -8,6 +8,15 @@
 #ifndef _INCLUDE_FDK_AAC_DECODER_H_
 #define _INCLUDE_FDK_AAC_DECODER_H_
 
-void fdkaac_decoder_task(void *pvParameters);
+#include "audio_player.hpp"
+
+class FdkAACDecoder: public Decoder
+{
+    public:
+	FdkAACDecoder(Player* player);
+	virtual void decoder_task();
+	virtual const char* task_name() const;
+	virtual int stack_depth() const;
+};
 
 #endif /* _INCLUDE_FDK_AAC_DECODER_H_ */

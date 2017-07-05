@@ -5,4 +5,13 @@
  *      Author: michaelboeckling
  */
 
-void mp3_decoder_task(void *pvParameters);
+class Mp3Decoder: public Decoder
+{
+    public:
+        Mp3Decoder(Player* player);
+        virtual void decoder_task();
+        virtual const char* task_name() const;
+        virtual int stack_depth() const;
+
+};
+

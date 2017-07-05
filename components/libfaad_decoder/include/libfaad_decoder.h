@@ -8,6 +8,13 @@
 #ifndef _INCLUDE_LIBFAAD_DECODER_H_
 #define _INCLUDE_LIBFAAD_DECODER_H_
 
-void libfaac_decoder_task(void *pvParameters);
+class LibFaacDecoder: public Decoder
+{
+    public:
+	LibFaacDecoder(Player* player);
+	virtual void decoder_task();
+	virtual const char* task_name() const;
+	virtual int stack_depth() const;
+};
 
 #endif /* _INCLUDE_LIBFAAD_DECODER_H_ */

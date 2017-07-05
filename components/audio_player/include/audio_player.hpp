@@ -10,6 +10,7 @@
 
 #include <sys/types.h>
 #include "common_component.h"
+#include "Source.hpp"
 
 class Sink;
 
@@ -30,6 +31,7 @@ typedef struct {
     content_type_t content_type;
     bool eof;
 } media_stream_t;
+
 
 class Player {
     private:
@@ -61,5 +63,19 @@ class Player {
         Sink* getRenderer();
 };
 
+class Decoder: public Source
+{
+    public:
+	int start();
+	virtual ~Decoder();
+    protected:
+	Decoder(Player* player);
+	virtual void decoder_task() = 0;
+        virtual const char* task_name() const = 0;
+	virtual int stack_depth() const = 0;
+	Player* m_player;
+    private:
+	static void decoder_task(void *pvParameters);
+};
 
 #endif /* INCLUDE_AUDIO_PLAYER_H_ */

@@ -104,13 +104,26 @@ static enum mad_flow error(void *data, struct mad_stream *stream, struct mad_fra
 
 Player* active_player;
 
+Mp3Decoder::Mp3Decoder(Player* player): Decoder(player)
+{
+}
+
+const char* Mp3Decoder::task_name() const
+{
+    return "mp3_decoder_task";
+}
+
+int Mp3Decoder::stack_depth() const
+{
+    return 8448;
+}
+
+
 //This is the main mp3 decoding task. It will grab data from the input buffer FIFO in the SPI ram and
 //output it to the I2S port.
-void mp3_decoder_task(void *pvParameters)
+void Mp3Decoder::decoder_task()
 {
-    Player* player = (Player*) pvParameters;
-    
-    active_player = player;
+    active_player = m_player;
 
     int ret;
     struct mad_stream *stream;
@@ -138,19 +151,19 @@ void mp3_decoder_task(void *pvParameters)
     mad_synth_init(synth);
 
 
-    player->getRenderer()->take(nullptr);
+    m_player->getRenderer()->take(this);
 
     while(1) {
 
         // calls mad_stream_buffer internally
-        if (input(stream, buf, player) == MAD_FLOW_STOP ) {
+        if (input(stream, buf, m_player) == MAD_FLOW_STOP ) {
             break;
         }
 
         // decode frames until MAD complains
         while(1) {
 
-            if(player->getDecoderCommand()== CMD_STOP) {
+            if(m_player->getDecoderCommand()== CMD_STOP) {
                 goto abort;
             }
 
@@ -171,7 +184,7 @@ void mp3_decoder_task(void *pvParameters)
 
     abort:
     // avoid noise
-    player->getRenderer()->release(nullptr);
+    m_player->getRenderer()->release(this);
 
     active_player = NULL;
     free(synth);
@@ -182,8 +195,8 @@ void mp3_decoder_task(void *pvParameters)
     // clear semaphore for reader task
     spiRamFifoReset();
 
-    player->set_player_status(STOPPED);
-    player->setDecoderCommand(CMD_NONE);
+    m_player->set_player_status(STOPPED);
+    m_player->setDecoderCommand(CMD_NONE);
     ESP_LOGI(TAG, "decoder stopped");
 
     ESP_LOGI(TAG, "MAD decoder stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
