@@ -50,7 +50,10 @@ void Decoder::decoder_task(void *pvParameters)
 {
     Decoder* o = (Decoder*)pvParameters;
     o->decoder_task();
+    ESP_LOGI(TAG, "decoder stopped");
+    ESP_LOGI(TAG, "%s decoder stack: %d\n", o->task_name(),  uxTaskGetStackHighWaterMark(NULL));
     delete o;
+    vTaskDelete(NULL);
 }
 
 Decoder::Decoder(Player* player): m_player(player)

@@ -183,8 +183,4 @@ void FdkAACDecoder::decoder_task()
     buf_destroy(pcm_buf);
 
     aacDecoder_Close(handle);
-
-    ESP_LOGI(TAG, "aac decoder finished");
-
-    vTaskDelete(NULL);
 }

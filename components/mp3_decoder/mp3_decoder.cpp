@@ -224,9 +224,5 @@ void Mp3Decoder::decoder_task()
 
     m_player->set_player_status(STOPPED);
     m_player->setDecoderCommand(CMD_NONE);
-    ESP_LOGI(TAG, "decoder stopped");
-
-    ESP_LOGI(TAG, "MAD decoder stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
-    vTaskDelete(NULL);
 }
 
