@@ -25,7 +25,6 @@ extern "C"
 #include "audio_player.hpp"
 #include "spiram_fifo.h"
 #include "mp3_decoder.h"
-#include "common_buffer.h"
 
 #define TAG "mad_decoder"
 
@@ -36,8 +35,6 @@ extern "C"
 // The theoretical minimum frame size of 24 plus 8 byte MAD_BUFFER_GUARD.
 #define MIN_FRAME_SIZE (32)
 
-static long buf_underrun_cnt;
-
 /* default MAD buffer format */
 pcm_format_t mad_buffer_fmt = {
     .sample_rate = 44100,
@@ -47,7 +44,38 @@ pcm_format_t mad_buffer_fmt = {
     .endianness = PCM_BIG_ENDIAN
 };
 
-static enum mad_flow input(struct mad_stream *stream, buffer_t *buf, Player* player)
+Mp3Decoder* Mp3Decoder::activeInstance = nullptr;
+
+extern "C" void set_dac_sample_rate(int rate);
+
+/* Called by the NXP modifications of libmad. Sets the needed output sample rate. */
+void set_dac_sample_rate(int rate)
+{
+    mad_buffer_fmt.sample_rate = rate;
+}
+
+extern "C" void render_sample_block(short *sample_buff_ch0, short *sample_buff_ch1, int num_samples, unsigned int num_channels);
+/* render callback for the libmad synth */
+void render_sample_block(short *sample_buff_ch0, short *sample_buff_ch1, int num_samples, unsigned int num_channels)
+{
+    Mp3Decoder::instance()->renderSampleBlock(sample_buff_ch0, sample_buff_ch1, num_samples, num_channels);
+}
+
+Mp3Decoder* Mp3Decoder::instance()
+{
+    return activeInstance;
+}
+
+void Mp3Decoder::renderSampleBlock(short *sample_buff_ch0, short *sample_buff_ch1, int num_samples, unsigned int num_channels)
+{
+    mad_buffer_fmt.num_channels = num_channels;
+    uint32_t len = num_samples * sizeof(short) * num_channels;
+    m_player->getRenderer()->play(this, (char*) sample_buff_ch0, len, &mad_buffer_fmt);
+    return;
+}
+
+
+enum mad_flow Mp3Decoder::input(struct mad_stream *stream, buffer_t *buf)
 {
     int bytes_to_read;
 
@@ -58,7 +86,7 @@ static enum mad_flow input(struct mad_stream *stream, buffer_t *buf, Player* pla
     while (1) {
 
         // stop requested, terminate immediately
-        if(player->getDecoderCommand()== CMD_STOP) {
+        if(isStopped()) {
             return MAD_FLOW_STOP;
         }
 
@@ -69,7 +97,7 @@ static enum mad_flow input(struct mad_stream *stream, buffer_t *buf, Player* pla
         if (bytes_to_read == 0) {
 
             // EOF reached, stop decoder when all frames have been consumed
-            if(player->getMediaStream()->eof) {
+            if(m_player->getMediaStream()->eof) {
                 return MAD_FLOW_STOP;
             }
 
@@ -79,7 +107,7 @@ static enum mad_flow input(struct mad_stream *stream, buffer_t *buf, Player* pla
             buf_underrun_cnt++;
             //We both silence the output as well as wait a while by pushing silent samples into the i2s system.
             //This waits for about 200mS
-            player->getRenderer()->playWhite(nullptr);
+            m_player->getRenderer()->playWhite(this);
         } else {
             //Read some bytes from the FIFO to re-fill the buffer.
             fill_read_buffer(buf);
@@ -97,12 +125,10 @@ static enum mad_flow input(struct mad_stream *stream, buffer_t *buf, Player* pla
 
 
 //Routine to print out an error
-static enum mad_flow error(void *data, struct mad_stream *stream, struct mad_frame *frame) {
+enum mad_flow Mp3Decoder::error(void *data, struct mad_stream *stream, struct mad_frame *frame) {
     ESP_LOGE(TAG, "dec err 0x%04x (%s)", stream->error, mad_stream_errorstr(stream));
     return MAD_FLOW_CONTINUE;
 }
-
-Player* active_player;
 
 Mp3Decoder::Mp3Decoder(Player* player): Decoder(player)
 {
@@ -123,7 +149,7 @@ int Mp3Decoder::stack_depth() const
 //output it to the I2S port.
 void Mp3Decoder::decoder_task()
 {
-    active_player = m_player;
+    activeInstance = this;
 
     int ret;
     struct mad_stream *stream;
@@ -132,13 +158,12 @@ void Mp3Decoder::decoder_task()
 
     //Allocate structs needed for mp3 decoding
     stream = (mad_stream*)malloc(sizeof(struct mad_stream));
-    frame = (mad_frame*)malloc(sizeof(struct mad_frame));
-    synth = (mad_synth*)malloc(sizeof(struct mad_synth));
-    buffer_t *buf = buf_create(MAX_FRAME_SIZE);
-
     if (stream==NULL) { ESP_LOGE(TAG, "malloc(stream) failed\n"); return; }
-    if (synth==NULL) { ESP_LOGE(TAG, "malloc(synth) failed\n"); return; }
+    frame = (mad_frame*)malloc(sizeof(struct mad_frame));
     if (frame==NULL) { ESP_LOGE(TAG, "malloc(frame) failed\n"); return; }
+    synth = (mad_synth*)malloc(sizeof(struct mad_synth));
+    if (synth==NULL) { ESP_LOGE(TAG, "malloc(synth) failed\n"); return; }
+    buffer_t *buf = buf_create(MAX_FRAME_SIZE);
     if (buf==NULL) { ESP_LOGE(TAG, "buf_create() failed\n"); return; }
 
     buf_underrun_cnt = 0;
@@ -150,21 +175,21 @@ void Mp3Decoder::decoder_task()
     mad_frame_init(frame);
     mad_synth_init(synth);
 
-
+    // Take ownership of the renderer
     m_player->getRenderer()->take(this);
 
     while(1) {
 
         // calls mad_stream_buffer internally
-        if (input(stream, buf, m_player) == MAD_FLOW_STOP ) {
+        if (input(stream, buf) == MAD_FLOW_STOP ) {
             break;
         }
 
         // decode frames until MAD complains
         while(1) {
 
-            if(m_player->getDecoderCommand()== CMD_STOP) {
-                goto abort;
+            if(isStopped()) {
+		break;
             }
 
             // returns 0 or -1
@@ -180,13 +205,15 @@ void Mp3Decoder::decoder_task()
             mad_synth_frame(synth, frame);
         }
         // ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
+	if(isStopped()) {
+	    break;
+	}
     }
 
-    abort:
-    // avoid noise
+    // Release the renderer
     m_player->getRenderer()->release(this);
 
-    active_player = NULL;
+    activeInstance = nullptr;
     free(synth);
     free(frame);
     free(stream);
@@ -201,23 +228,5 @@ void Mp3Decoder::decoder_task()
 
     ESP_LOGI(TAG, "MAD decoder stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
     vTaskDelete(NULL);
-}
-
-extern "C" void set_dac_sample_rate(int rate);
-
-/* Called by the NXP modifications of libmad. Sets the needed output sample rate. */
-void set_dac_sample_rate(int rate)
-{
-    mad_buffer_fmt.sample_rate = rate;
-}
-
-extern "C" void render_sample_block(short *sample_buff_ch0, short *sample_buff_ch1, int num_samples, unsigned int num_channels);
-/* render callback for the libmad synth */
-void render_sample_block(short *sample_buff_ch0, short *sample_buff_ch1, int num_samples, unsigned int num_channels)
-{
-    mad_buffer_fmt.num_channels = num_channels;
-    uint32_t len = num_samples * sizeof(short) * num_channels;
-    active_player->getRenderer()->play(nullptr, (char*) sample_buff_ch0, len, &mad_buffer_fmt);
-    return;
 }
 

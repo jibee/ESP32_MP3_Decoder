@@ -206,4 +206,9 @@ Sink* Player::getRenderer()
     return renderer;
 }
 
+bool Decoder::isStopped() const
+{
+    return m_player->getDecoderCommand() == CMD_STOP;
+}
+
 

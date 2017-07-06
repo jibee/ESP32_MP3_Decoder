@@ -74,6 +74,7 @@ class Decoder: public Source
         virtual const char* task_name() const = 0;
 	virtual int stack_depth() const = 0;
 	Player* m_player;
+	bool isStopped() const;
     private:
 	static void decoder_task(void *pvParameters);
 };
