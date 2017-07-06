@@ -9,6 +9,7 @@
 #define _INCLUDE_FDK_AAC_DECODER_H_
 
 #include "audio_player.hpp"
+#include "Decoder.hpp"
 
 class FdkAACDecoder: public Decoder
 {

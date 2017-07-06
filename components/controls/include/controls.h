@@ -8,6 +8,7 @@
 #ifndef _CONTROLS_H_
 #define _CONTROLS_H_
 
+#include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
 #ifdef __cplusplus

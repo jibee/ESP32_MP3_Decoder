@@ -6,8 +6,6 @@
  */
 
 #include <stdlib.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
 #include "spiram_fifo.h"
 
@@ -23,7 +21,6 @@
 #include "audio_player.hpp"
 
 #define TAG "audio_player"
-#define PRIO_MAD configMAX_PRIORITIES - 2
 
 // TODO static allocation
 static Player* player_instance = NULL;
@@ -63,31 +60,6 @@ int Player::start_decoder_task()
 	return retval;
     }
     return -1;
-}
-
-int Decoder::start()
-{
-    if (xTaskCreatePinnedToCore(Decoder::decoder_task, task_name(), stack_depth(), this, PRIO_MAD, NULL, 1) != pdPASS) {
-        ESP_LOGE(TAG, "ERROR creating decoder task! Out of memory?");
-        return -1;
-    }
-    ESP_LOGI(TAG, "created decoder task: %s", task_name());
-    return 0;
-}
-
-void Decoder::decoder_task(void *pvParameters)
-{
-    Decoder* o = (Decoder*)pvParameters;
-    o->decoder_task();
-    delete o;
-}
-
-Decoder::Decoder(Player* player): m_player(player)
-{
-}
-
-Decoder::~Decoder()
-{
 }
 
 static int t;
@@ -204,11 +176,6 @@ Player::Player(Sink* r): renderer(r)
 Sink* Player::getRenderer()
 {
     return renderer;
-}
-
-bool Decoder::isStopped() const
-{
-    return m_player->getDecoderCommand() == CMD_STOP;
 }
 
 

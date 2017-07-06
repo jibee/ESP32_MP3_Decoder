@@ -8,6 +8,10 @@
 #ifndef _INCLUDE_LIBFAAD_DECODER_H_
 #define _INCLUDE_LIBFAAD_DECODER_H_
 
+#include "Decoder.hpp"
+
+class Player;
+
 class LibFaacDecoder: public Decoder
 {
     public:

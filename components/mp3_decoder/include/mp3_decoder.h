@@ -10,6 +10,9 @@ extern "C"
 #include "../../mad/mad.h"
 }
 #include "common_buffer.h"
+#include "Decoder.hpp"
+
+class Player;
 
 class Mp3Decoder: public Decoder
 {

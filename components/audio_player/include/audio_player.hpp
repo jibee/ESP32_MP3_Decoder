@@ -10,9 +10,7 @@
 
 #include <sys/types.h>
 #include "common_component.h"
-#include "Source.hpp"
 
-class Sink;
 
 typedef enum {
     CMD_NONE, CMD_START, CMD_STOP
@@ -32,6 +30,7 @@ typedef struct {
     bool eof;
 } media_stream_t;
 
+class Sink;
 
 class Player {
     private:
@@ -61,22 +60,6 @@ class Player {
 
 	media_stream_t* getMediaStream();
         Sink* getRenderer();
-};
-
-class Decoder: public Source
-{
-    public:
-	int start();
-	virtual ~Decoder();
-    protected:
-	Decoder(Player* player);
-	virtual void decoder_task() = 0;
-        virtual const char* task_name() const = 0;
-	virtual int stack_depth() const = 0;
-	Player* m_player;
-	bool isStopped() const;
-    private:
-	static void decoder_task(void *pvParameters);
 };
 
 #endif /* INCLUDE_AUDIO_PLAYER_H_ */
