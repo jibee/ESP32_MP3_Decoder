@@ -132,6 +132,17 @@ enum mad_flow Mp3Decoder::error(void *data, struct mad_stream *stream, struct ma
 
 Mp3Decoder::Mp3Decoder(Player* player): Decoder(player)
 {
+    //Allocate structs needed for mp3 decoding
+    stream = (mad_stream*)malloc(sizeof(struct mad_stream));
+    if (stream==NULL) { ESP_LOGE(TAG, "malloc(stream) failed\n"); return; }
+    frame = (mad_frame*)malloc(sizeof(struct mad_frame));
+    if (frame==NULL) { ESP_LOGE(TAG, "malloc(frame) failed\n"); return; }
+    synth = (mad_synth*)malloc(sizeof(struct mad_synth));
+    if (synth==NULL) { ESP_LOGE(TAG, "malloc(synth) failed\n"); return; }
+    buf = buf_create(MAX_FRAME_SIZE);
+    if (buf==NULL) { ESP_LOGE(TAG, "buf_create() failed\n"); return; }
+
+    buf_underrun_cnt = 0;
 }
 
 const char* Mp3Decoder::task_name() const
@@ -152,21 +163,7 @@ void Mp3Decoder::decoder_task()
     activeInstance = this;
 
     int ret;
-    struct mad_stream *stream;
-    struct mad_frame *frame;
-    struct mad_synth *synth;
 
-    //Allocate structs needed for mp3 decoding
-    stream = (mad_stream*)malloc(sizeof(struct mad_stream));
-    if (stream==NULL) { ESP_LOGE(TAG, "malloc(stream) failed\n"); return; }
-    frame = (mad_frame*)malloc(sizeof(struct mad_frame));
-    if (frame==NULL) { ESP_LOGE(TAG, "malloc(frame) failed\n"); return; }
-    synth = (mad_synth*)malloc(sizeof(struct mad_synth));
-    if (synth==NULL) { ESP_LOGE(TAG, "malloc(synth) failed\n"); return; }
-    buffer_t *buf = buf_create(MAX_FRAME_SIZE);
-    if (buf==NULL) { ESP_LOGE(TAG, "buf_create() failed\n"); return; }
-
-    buf_underrun_cnt = 0;
 
     ESP_LOGI(TAG, "decoder start");
 
@@ -213,16 +210,19 @@ void Mp3Decoder::decoder_task()
     // Release the renderer
     m_player->getRenderer()->release(this);
 
-    activeInstance = nullptr;
-    free(synth);
-    free(frame);
-    free(stream);
-    buf_destroy(buf);
-
     // clear semaphore for reader task
     spiRamFifoReset();
 
     m_player->set_player_status(STOPPED);
     m_player->setDecoderCommand(CMD_NONE);
+}
+
+Mp3Decoder::~Mp3Decoder()
+{
+    activeInstance = nullptr;
+    free(synth);
+    free(frame);
+    free(stream);
+    buf_destroy(buf);
 }
 

@@ -17,10 +17,11 @@ class Player;
 class Mp3Decoder: public Decoder
 {
     public:
-        Mp3Decoder(Player* player);
-        virtual void decoder_task();
-        virtual const char* task_name() const;
-        virtual int stack_depth() const;
+	Mp3Decoder(Player* player);
+	virtual ~Mp3Decoder();
+	virtual void decoder_task();
+	virtual const char* task_name() const;
+	virtual int stack_depth() const;
 	static Mp3Decoder* instance();
 	void renderSampleBlock(short *sample_buff_ch0, short *sample_buff_ch1, int num_samples, unsigned int num_channels);
     private:
@@ -28,5 +29,9 @@ class Mp3Decoder: public Decoder
 	enum mad_flow error(void *data, struct mad_stream *stream, struct mad_frame *frame);
 	long buf_underrun_cnt;
 	static Mp3Decoder* activeInstance;
+	struct mad_stream *stream;
+	struct mad_frame *frame;
+	struct mad_synth *synth;
+	buffer_t *buf;
 };
 

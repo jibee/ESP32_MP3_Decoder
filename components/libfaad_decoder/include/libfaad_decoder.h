@@ -16,6 +16,7 @@ class LibFaacDecoder: public Decoder
 {
     public:
 	LibFaacDecoder(Player* player);
+	virtual ~LibFaacDecoder();
 	virtual void decoder_task();
 	virtual const char* task_name() const;
 	virtual int stack_depth() const;

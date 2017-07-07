@@ -15,8 +15,6 @@
 #include "esp_log.h"
 #include "driver/i2s.h"
 
-#include "common_buffer.h"
-#include "aacdecoder_lib.h"
 #include "audio_player.hpp"
 #include "Sink.hpp"
 #include "fdk_aac_decoder.hpp"
@@ -39,6 +37,11 @@ static const uint32_t INPUT_BUFFER_SIZE = 1024;
 
 FdkAACDecoder::FdkAACDecoder(Player* player): Decoder(player)
 {
+    /* allocate sample buffer */
+    pcm_buf = buf_create(OUTPUT_BUFFER_SIZE);
+
+    /* allocate bitstream buffer */
+    in_buf = buf_create(INPUT_BUFFER_SIZE);
 }
 
 const char* FdkAACDecoder::task_name() const
@@ -58,11 +61,6 @@ void FdkAACDecoder::decoder_task()
 
     AAC_DECODER_ERROR err;
 
-    /* allocate sample buffer */
-    buffer_t *pcm_buf = buf_create(OUTPUT_BUFFER_SIZE);
-
-    /* allocate bitstream buffer */
-    buffer_t *in_buf = buf_create(INPUT_BUFFER_SIZE);
     fill_read_buffer(in_buf);
 
     HANDLE_AACDECODER handle = NULL;
@@ -85,7 +83,7 @@ void FdkAACDecoder::decoder_task()
 
         if (!qtmovie_read(&input_stream, &demux_res)) {
             ESP_LOGE(TAG, "qtmovie_read failed");
-            goto cleanup;
+	    return;
         } else {
             ESP_LOGI(TAG, "qtmovie_read success");
         }
@@ -94,7 +92,7 @@ void FdkAACDecoder::decoder_task()
         handle = aacDecoder_Open(TT_MP4_RAW, /* num layers */1);
         if (handle == NULL) {
             ESP_LOGE(TAG, "malloc failed %d", __LINE__);
-            goto cleanup;
+	    return;
         }
 
         // If out-of-band config data (AudioSpecificConfig(ASC) or StreamMuxConfig(SMC)) is available
@@ -103,7 +101,7 @@ void FdkAACDecoder::decoder_task()
         err = aacDecoder_ConfigRaw(handle, (unsigned char**) &demux_res.codecdata, &demux_res.codecdata_len);
         if (err != AAC_DEC_OK) {
             ESP_LOGE(TAG, "aacDecoder_ConfigRaw error %d", err);
-            goto cleanup;
+	    return;
         }
 
     } else {
@@ -111,7 +109,7 @@ void FdkAACDecoder::decoder_task()
         handle = aacDecoder_Open(TT_MP4_ADTS, /* num layers */1);
         if (handle == NULL) {
             ESP_LOGE(TAG, "malloc failed %d", __LINE__);
-            goto cleanup;
+	    return;
         }
     }
 
@@ -176,11 +174,11 @@ void FdkAACDecoder::decoder_task()
 
         // about 32K free heap at this point
     }
+}
 
-    cleanup:
-
+FdkAACDecoder::~FdkAACDecoder()
+{
     buf_destroy(in_buf);
     buf_destroy(pcm_buf);
-
     aacDecoder_Close(handle);
 }

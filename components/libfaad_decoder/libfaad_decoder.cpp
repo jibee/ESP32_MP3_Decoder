@@ -91,6 +91,10 @@ LibFaacDecoder::LibFaacDecoder(Player* player): Decoder(player)
 {
 }
 
+LibFaacDecoder::~LibFaacDecoder()
+{
+}
+
 const char* LibFaacDecoder::task_name() const
 {
     return "libfaac_decoder_task";
@@ -256,7 +260,7 @@ void LibFaacDecoder::decoder_task()
 
         // ESP_LOGI(TAG, "stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
     }
-
+    free(buf.base);
     NeAACDecClose(decoder);
 }
 
