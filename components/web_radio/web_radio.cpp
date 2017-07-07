@@ -123,7 +123,7 @@ static void http_get_task(void *pvParameters)
 
     // blocks until end of stream
     int result = http_client_get(
-	    radio_conf->getUrl(),
+	    radio_conf->getUrl().c_str(),
 	    &callbacks,
 	    radio_conf->getPlayer()
 	    );
@@ -138,14 +138,14 @@ static void http_get_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-void WebRadio::web_radio_start()
+void WebRadio::start()
 {
     // start reader task
     xTaskCreatePinnedToCore(&http_get_task, "http_get_task", 2560, this, 20,
     NULL, 0);
 }
 
-void WebRadio::web_radio_stop()
+void WebRadio::stop()
 {
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
 
@@ -156,7 +156,7 @@ void WebRadio::web_radio_stop()
 void web_radio_gpio_handler_task(void *pvParams)
 {
     gpio_handler_param_t *params = (gpio_handler_param_t*) pvParams;
-    WebRadio *config = (WebRadio*) params->user_data;
+    WebRadio *webradio = (WebRadio*) params->user_data;
     xQueueHandle gpio_evt_queue = params->gpio_evt_queue;
 
     uint32_t io_num;
@@ -164,36 +164,32 @@ void web_radio_gpio_handler_task(void *pvParams)
         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             ESP_LOGI(TAG, "GPIO[%d] intr, val: %d", io_num, gpio_get_level((gpio_num_t)io_num));
 
-            switch (config->getPlayer()->get_player_status()) {
+            switch (webradio->getPlayer()->get_player_status()) {
                 case RUNNING:
                     ESP_LOGI(TAG, "stopping player");
-                    config->web_radio_stop();
+                    webradio->stop();
                     break;
 
                 case STOPPED:
                     ESP_LOGI(TAG, "starting player");
-                    config->web_radio_start();
+                    webradio->start();
                     break;
 
                 default:
-                    ESP_LOGI(TAG, "player state: %d", config->getPlayer()->get_player_status());
+                    ESP_LOGI(TAG, "player state: %d", webradio->getPlayer()->get_player_status());
             }
         }
     }
 }
 
-void WebRadio::web_radio_init()
-{
-    // controls_init(web_radio_gpio_handler_task, 2048, config);
-    player_config->audio_player_init();
-}
-
-void WebRadio::web_radio_destroy()
+WebRadio::~WebRadio()
 {
     //controls_destroy(config);
     player_config->audio_player_destroy();
 }
 
-WebRadio::WebRadio(const char* u, Player* config): url(u), player_config(config)
+WebRadio::WebRadio(const std::string& u, Player* config): url(u), player_config(config)
 {
+    // controls_init(web_radio_gpio_handler_task, 2048, config);
+    player_config->audio_player_init();
 }

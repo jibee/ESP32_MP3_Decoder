@@ -31,6 +31,7 @@
 #include "esp_log.h"
 
 #include "Decoder.hpp"
+#include "Sink.hpp"
 #include "audio_player.hpp"
 
 #define TAG "Decoder"
@@ -49,6 +50,8 @@ int Decoder::start()
 void Decoder::decoder_task(void *pvParameters)
 {
     Decoder* o = (Decoder*)pvParameters;
+    // Take ownership of the renderer
+    o->m_player->getRenderer()->take(o);
     o->decoder_task();
     ESP_LOGI(TAG, "decoder stopped");
     ESP_LOGI(TAG, "%s decoder stack: %d\n", o->task_name(),  uxTaskGetStackHighWaterMark(NULL));
@@ -62,7 +65,12 @@ Decoder::Decoder(Player* player): m_player(player)
 
 Decoder::~Decoder()
 {
+    // Release the renderer
+    m_player->getRenderer()->release(this);
+    m_player->set_player_status(STOPPED);
+    m_player->setDecoderCommand(CMD_NONE);
 }
+
 
 bool Decoder::isStopped() const
 {

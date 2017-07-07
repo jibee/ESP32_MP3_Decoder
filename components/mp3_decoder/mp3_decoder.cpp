@@ -143,6 +143,11 @@ Mp3Decoder::Mp3Decoder(Player* player): Decoder(player)
     if (buf==NULL) { ESP_LOGE(TAG, "buf_create() failed\n"); return; }
 
     buf_underrun_cnt = 0;
+
+    //Initialize mp3 parts
+    mad_stream_init(stream);
+    mad_frame_init(frame);
+    mad_synth_init(synth);
 }
 
 const char* Mp3Decoder::task_name() const
@@ -166,14 +171,6 @@ void Mp3Decoder::decoder_task()
 
 
     ESP_LOGI(TAG, "decoder start");
-
-    //Initialize mp3 parts
-    mad_stream_init(stream);
-    mad_frame_init(frame);
-    mad_synth_init(synth);
-
-    // Take ownership of the renderer
-    m_player->getRenderer()->take(this);
 
     while(1) {
 
@@ -207,14 +204,8 @@ void Mp3Decoder::decoder_task()
 	}
     }
 
-    // Release the renderer
-    m_player->getRenderer()->release(this);
-
     // clear semaphore for reader task
     spiRamFifoReset();
-
-    m_player->set_player_status(STOPPED);
-    m_player->setDecoderCommand(CMD_NONE);
 }
 
 Mp3Decoder::~Mp3Decoder()

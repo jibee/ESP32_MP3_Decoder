@@ -91,8 +91,7 @@ static void start_web_radio(Sink* renderer)
     WebRadio *radio_config = new WebRadio(play_url, player_config);
 
     // start radio
-    radio_config->web_radio_init();
-    radio_config->web_radio_start();
+    radio_config->start();
 }
 
 /**
