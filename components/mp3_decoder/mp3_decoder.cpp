@@ -71,18 +71,16 @@ void Mp3Decoder::renderSampleBlock(short *sample_buff_ch0, short *sample_buff_ch
     mad_buffer_fmt.num_channels = num_channels;
     uint32_t len = num_samples * sizeof(short) * num_channels;
     m_player->getRenderer()->play(this, (char*) sample_buff_ch0, len, &mad_buffer_fmt);
-    return;
 }
 
 
-enum mad_flow Mp3Decoder::input(struct mad_stream *stream, buffer_t *buf)
+enum mad_flow Mp3Decoder::input()
 {
     int bytes_to_read;
 
     // next_frame is the position MAD is interested in resuming from
     uint32_t bytes_consumed  = stream->next_frame - stream->buffer;
     buf_seek_rel(buf, bytes_consumed);
-
     while (1) {
 
         // stop requested, terminate immediately
@@ -135,10 +133,13 @@ Mp3Decoder::Mp3Decoder(Player* player): Decoder(player)
     //Allocate structs needed for mp3 decoding
     stream = (mad_stream*)malloc(sizeof(struct mad_stream));
     if (stream==NULL) { ESP_LOGE(TAG, "malloc(stream) failed\n"); return; }
+
     frame = (mad_frame*)malloc(sizeof(struct mad_frame));
     if (frame==NULL) { ESP_LOGE(TAG, "malloc(frame) failed\n"); return; }
+
     synth = (mad_synth*)malloc(sizeof(struct mad_synth));
     if (synth==NULL) { ESP_LOGE(TAG, "malloc(synth) failed\n"); return; }
+
     buf = buf_create(MAX_FRAME_SIZE);
     if (buf==NULL) { ESP_LOGE(TAG, "buf_create() failed\n"); return; }
 
@@ -175,7 +176,7 @@ void Mp3Decoder::decoder_task()
     while(1) {
 
         // calls mad_stream_buffer internally
-        if (input(stream, buf) == MAD_FLOW_STOP ) {
+        if (input() == MAD_FLOW_STOP ) {
             break;
         }
 
