@@ -29,6 +29,9 @@
 #include "Sink.hpp"
 #include "Source.hpp"
 #include "audio_renderer.hpp"
+#include "esp_log.h"
+
+#define TAG "Sink::"
 
 Sink::Sink(Renderer* renderer): m_currentOwner(nullptr), m_renderer(renderer)
 {
@@ -43,6 +46,7 @@ bool Sink::take(const Source* owner)
     if(nullptr==m_currentOwner)
     {
 	m_currentOwner=owner;
+	m_renderer->renderer_start();
 	return true;
     }
     else
@@ -56,6 +60,7 @@ void Sink::release(const Source* owner)
     if(owner==m_currentOwner)
     {
 	playWhite(owner);
+	m_renderer->renderer_stop();
 	m_currentOwner = nullptr;
     }
 }
@@ -64,7 +69,18 @@ void Sink::play(const Source* owner, const char* buf, uint32_t len, pcm_format_t
 {
     if(owner==m_currentOwner)
     {
-	m_renderer->render_samples(buf, len, format);
+	if(m_renderer)
+	{
+	    m_renderer->render_samples(buf, len, format);
+	}
+	else
+	{
+	    ESP_LOGE(TAG, "NO RENDERER!!")
+	}
+    }
+    else
+    {
+	ESP_LOGE(TAG, "Source %p tried to play", owner);
     }
 }
 
