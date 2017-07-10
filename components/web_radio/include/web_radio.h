@@ -11,6 +11,8 @@
 #include <string>
 #include "audio_player.hpp"
 
+struct http_parser;
+
 class WebRadio
 {
     private:
@@ -28,6 +30,23 @@ class WebRadio
 
 	void start();
 	void stop();
+
+    private:
+	static int on_status_cb(http_parser* parser, const char *at, size_t length);
+	int on_status(const char *at, size_t length);
+	static int on_header_field_cb(http_parser *parser, const char *at, size_t length);
+	int on_header_field(const char *at, size_t length);
+	static int on_header_value_cb(http_parser *parser, const char *at, size_t length);
+	int on_header_value(const char *at, size_t length);
+	static int on_message_complete_cb(http_parser *parser);
+	int on_message_complete();
+	static int on_body_cb(http_parser* parser, const char *at, size_t length);
+	int on_body(const char *at, size_t length);
+	static int on_headers_complete_cb(http_parser *parser);
+	int on_headers_complete();
+
+	static void http_get_task(void *pvParameters);
+	void http_get_task();
 };
 
 #endif /* INCLUDE_WEB_RADIO_H_ */

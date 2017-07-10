@@ -34,13 +34,25 @@ static header_field_t curr_header_field = HDR_UNKNOWN;
 static content_type_t content_type = MIME_UNKNOWN;
 static bool headers_complete = false;
 
-static int on_status_cb(http_parser* parser, const char *at, size_t length)
+int WebRadio::on_status_cb(http_parser* parser, const char *at, size_t length)
 {
-	ESP_LOGI(TAG, "HTTP status: %i %s", length, at);
-	return 0;
+    WebRadio* that = (WebRadio*) parser->data;
+    return that->on_status(at, length);
 }
 
-static int on_header_field_cb(http_parser *parser, const char *at, size_t length)
+int WebRadio::on_status(const char* at, size_t length)
+{
+    ESP_LOGI(TAG, "HTTP status: %i %s", length, at);
+    return 0;
+}
+
+int WebRadio::on_header_field_cb(http_parser *parser, const char *at, size_t length)
+{
+    WebRadio* that = (WebRadio*) parser->data;
+    return that->on_header_field(at, length);
+}
+
+int WebRadio::on_header_field(const char* at, size_t length)
 {
     // convert to lower case
 
@@ -60,7 +72,13 @@ static int on_header_field_cb(http_parser *parser, const char *at, size_t length
     return 0;
 }
 
-static int on_header_value_cb(http_parser *parser, const char *at, size_t length)
+int WebRadio::on_header_value_cb(http_parser *parser, const char *at, size_t length)
+{
+    WebRadio* that = (WebRadio*) parser->data;
+    return that->on_header_value(at, length);
+}
+
+int WebRadio::on_header_value(const char* at, size_t lenght)
 {
     if (curr_header_field == HDR_CONTENT_TYPE) {
         if (strstr(at, "application/octet-stream")) content_type = OCTET_STREAM;
@@ -82,10 +100,15 @@ static int on_header_value_cb(http_parser *parser, const char *at, size_t length
     return 0;
 }
 
-static int on_headers_complete_cb(http_parser *parser)
+int WebRadio::on_headers_complete_cb(http_parser *parser)
+{
+    WebRadio* that = (WebRadio*) parser->data;
+    return that->on_headers_complete();
+}
+
+int WebRadio::on_headers_complete()
 {
     headers_complete = true;
-    Player* player_config = (Player*) parser->data;
 
     player_config->getMediaStream()->content_type = content_type;
     player_config->getMediaStream()->eof = false;
@@ -95,23 +118,37 @@ static int on_headers_complete_cb(http_parser *parser)
     return 0;
 }
 
-static int on_body_cb(http_parser* parser, const char *at, size_t length)
+int WebRadio::on_body_cb(http_parser* parser, const char *at, size_t length)
 {
-    return Player::audio_stream_consumer(at, length, parser->data);
+    WebRadio* that = (WebRadio*) parser->data;
+    return that->on_body(at, length);
 }
 
-static int on_message_complete_cb(http_parser *parser)
+int WebRadio::on_body(const char* at, size_t length)
 {
-    Player *player_config = (Player*) parser->data;
-    player_config->getMediaStream()->eof = true;
+    return getPlayer()->audio_stream_consumer(at, length);
+}
 
+int WebRadio::on_message_complete_cb(http_parser *parser)
+{
+    WebRadio* that = (WebRadio*) parser->data;
+    return that->on_message_complete();
+}
+
+int WebRadio::on_message_complete()
+{
+    getPlayer()->getMediaStream()->eof = true;
     return 0;
 }
 
-static void http_get_task(void *pvParameters)
+void WebRadio::http_get_task(void *pvParameters)
 {
     WebRadio* radio_conf = (WebRadio*) pvParameters;
+    radio_conf->http_get_task();
+}
 
+void WebRadio::http_get_task()
+{
     /* configure callbacks */
     http_parser_settings callbacks = { NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL };
     callbacks.on_status = on_status_cb;
@@ -123,9 +160,9 @@ static void http_get_task(void *pvParameters)
 
     // blocks until end of stream
     int result = http_client_get(
-	    radio_conf->getUrl().c_str(),
+	    getUrl().c_str(),
 	    &callbacks,
-	    radio_conf->getPlayer()
+	    this
 	    );
 
     if (result != 0) {
@@ -152,7 +189,7 @@ void WebRadio::stop()
     player_config->audio_player_stop();
     // reader task terminates itself
 }
-
+#ifdef HAS_GPIO_CONTROLS
 void web_radio_gpio_handler_task(void *pvParams)
 {
     gpio_handler_param_t *params = (gpio_handler_param_t*) pvParams;
@@ -181,15 +218,20 @@ void web_radio_gpio_handler_task(void *pvParams)
         }
     }
 }
+#endif
 
 WebRadio::~WebRadio()
 {
-    //controls_destroy(config);
+#ifdef HAS_GPIO_CONTROLS
+    controls_destroy(config);
+#endif
     player_config->audio_player_destroy();
 }
 
 WebRadio::WebRadio(const std::string& u, Player* config): url(u), player_config(config)
 {
-    // controls_init(web_radio_gpio_handler_task, 2048, config);
+#ifdef HAS_GPIO_CONTROLS
+    controls_init(web_radio_gpio_handler_task, 2048, config);
+#endif
     player_config->audio_player_init();
 }
