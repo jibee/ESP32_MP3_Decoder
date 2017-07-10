@@ -40,12 +40,14 @@ class Player {
 	component_status_t decoder_status;
 	buffer_pref_t buffer_pref;
 	media_stream_t *media_stream;
+	component_status_t player_status;
 
 	Sink* renderer;
+	int blockCounter;
     public:
 	Player(Sink* r);
 
-	static int audio_stream_consumer(const char *recv_buf, ssize_t bytes_read, void *user_data);
+	int audio_stream_consumer(const char *recv_buf, ssize_t bytes_read);
 	void set_player_status(component_status_t);
 	void setDecoderCommand(player_command_t);
 	component_status_t get_player_status();

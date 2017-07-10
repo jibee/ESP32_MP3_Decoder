@@ -24,7 +24,6 @@
 
 // TODO static allocation
 static Player* player_instance = NULL;
-static component_status_t player_status = UNINITIALIZED;
 
 int Player::start_decoder_task()
 {
@@ -62,18 +61,14 @@ int Player::start_decoder_task()
     return -1;
 }
 
-static int t;
 
 /* Writes bytes into the FIFO queue, starts decoder task if necessary. */
-int Player::audio_stream_consumer(const char *recv_buf, ssize_t bytes_read,
-        void *user_data)
+int Player::audio_stream_consumer(const char *recv_buf, ssize_t bytes_read)
 {
-    Player* player = (Player*)user_data;
-
     // don't bother consuming bytes if stopped
-    if(player->command == CMD_STOP) {
-        player->decoder_command = CMD_STOP;
-        player->command = CMD_NONE;
+    if(command == CMD_STOP) {
+        decoder_command = CMD_STOP;
+        command = CMD_NONE;
         return -1;
     }
 
@@ -85,21 +80,21 @@ int Player::audio_stream_consumer(const char *recv_buf, ssize_t bytes_read,
     uint8_t fill_level = (bytes_in_buf * 100) / spiRamFifoLen();
 
     // seems 4k is enough to prevent initial buffer underflow
-    uint8_t min_fill_lvl = player->buffer_pref == BUF_PREF_FAST ? 20 : 90;
+    uint8_t min_fill_lvl = buffer_pref == BUF_PREF_FAST ? 20 : 90;
     bool enough_buffer = fill_level > min_fill_lvl;
 
-    bool early_start = (bytes_in_buf > 1028 && player->media_stream->eof);
-    if (player->decoder_status != RUNNING && (enough_buffer || early_start)) {
+    bool early_start = (bytes_in_buf > 1028 && media_stream->eof);
+    if (decoder_status != RUNNING && (enough_buffer || early_start)) {
 
         // buffer is filled, start decoder
-        if (player->start_decoder_task() != 0) {
+        if (start_decoder_task() != 0) {
             ESP_LOGE(TAG, "failed to start decoder task");
             return -1;
         }
     }
 
-    t = (t + 1) & 255;
-    if (t == 0) {
+    blockCounter = (blockCounter + 1) & 255;
+    if (blockCounter == 0) {
         ESP_LOGI(TAG, "Buffer fill %u%%, %d bytes", fill_level, bytes_in_buf);
     }
 
@@ -168,6 +163,7 @@ Player::Player(Sink* r): renderer(r)
 {
     command = CMD_NONE;
     decoder_status = UNINITIALIZED;
+    player_status = UNINITIALIZED;
     decoder_command = CMD_NONE;
     buffer_pref = BUF_PREF_SAFE;
     media_stream = new media_stream_t();
