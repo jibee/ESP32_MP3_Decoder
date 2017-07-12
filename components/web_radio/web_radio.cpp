@@ -69,12 +69,16 @@ int WebRadio::on_header_value(const char* at, size_t lenght)
 
 int WebRadio::on_headers_complete()
 {
+// TODO determine now where data will be sent to:
+// Player (audio data)
+// Controller (playlist, configuration file?)
+// Self (redirection)
     headers_complete = true;
 
-    player_config->getMediaStream()->content_type = content_type;
-    player_config->getMediaStream()->eof = false;
+    getMediaStream()->content_type = content_type;
+    getMediaStream()->eof = false;
 
-    player_config->audio_player_start();
+    getPlayer()->audio_player_start();
 
     return 0;
 }
@@ -86,7 +90,7 @@ int WebRadio::on_body(const char* at, size_t length)
 
 int WebRadio::on_message_complete()
 {
-    getPlayer()->getMediaStream()->eof = true;
+    getMediaStream()->eof = true;
     return 0;
 }
 
@@ -94,7 +98,7 @@ void WebRadio::stop()
 {
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
 
-    player_config->audio_player_stop();
+    getPlayer()->audio_player_stop();
     // reader task terminates itself
 }
 #ifdef HAS_GPIO_CONTROLS
@@ -133,13 +137,13 @@ WebRadio::~WebRadio()
 #ifdef HAS_GPIO_CONTROLS
     controls_destroy(config);
 #endif
-    player_config->audio_player_destroy();
+    getPlayer()->audio_player_destroy();
 }
 
-WebRadio::WebRadio(const std::string& u, Player* config): HttpClient(u), player_config(config)
+WebRadio::WebRadio(const std::string& u, Player* config): HttpClient(u), m_player(config), m_mediaStream(config->getMediaStream())
 {
 #ifdef HAS_GPIO_CONTROLS
     controls_init(web_radio_gpio_handler_task, 2048, config);
 #endif
-    player_config->audio_player_init();
+    getPlayer()->audio_player_init();
 }

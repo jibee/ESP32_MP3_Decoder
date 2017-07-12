@@ -20,10 +20,11 @@
 class WebRadio: private HttpClient
 {
     private:
-	Player* player_config;
-
+	Player* m_player;
+	media_stream_t* m_mediaStream;
     public:
-	Player* getPlayer() const { return player_config; };
+	Player* getPlayer() const { return m_player; };
+	media_stream_t* getMediaStream() const { return m_mediaStream; };
 
 	typedef struct {
 	} radio_controls_t;

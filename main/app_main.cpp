@@ -3,9 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
@@ -14,18 +11,15 @@
 #include "http.h"
 #include "driver/i2s.h"
 
-#include "ui.h"
 #include "spiram_fifo.h"
-#include "audio_renderer.hpp"
-#include "Sink.hpp"
-#include "web_radio.h"
 #include "playerconfig.h"
-#include "wifi.h"
 #include "app_main.h"
 #include "mdns_task.h"
 #ifdef CONFIG_BT_SPEAKER_MODE
 #include "bt_speaker.h"
 #endif
+
+#include "Controller.hpp"
 
 
 #define WIFI_LIST_NUM   10
@@ -58,41 +52,8 @@ static void init_hardware()
     ESP_LOGI(TAG, "hardware initialized");
 }
 
-static void start_wifi()
-{
-    ESP_LOGI(TAG, "starting network");
-
-    /* FreeRTOS event group to signal when we are connected & ready to make a request */
-    EventGroupHandle_t wifi_event_group = xEventGroupCreate();
-
-    /* init wifi */
-    ui_queue_event(UI_CONNECTING);
-    initialise_wifi(wifi_event_group);
-
-    /* start mDNS */
-    // xTaskCreatePinnedToCore(&mdns_task, "mdns_task", 2048, wifi_event_group, 5, NULL, 0);
-
-    /* Wait for the callback to set the CONNECTED_BIT in the event group. */
-    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
-                        false, true, portMAX_DELAY);
-
-    ui_queue_event(UI_CONNECTED);
-}
-
 const char* play_url = PLAY_URL;
 
-static void start_web_radio(Sink* renderer)
-{
-
-    // init player config
-    Player* player_config = new Player(renderer);
-
-    // init web radio
-    WebRadio *radio_config = new WebRadio(play_url, player_config);
-
-    // start radio
-    radio_config->start();
-}
 
 /**
  * entry point
@@ -106,16 +67,10 @@ void app_main()
 
     init_hardware();
 
-    // init renderer
-    Renderer* renderer = new Renderer();
-    renderer->renderer_init();
-    Sink* sink = new Sink(renderer);
-#ifdef CONFIG_BT_SPEAKER_MODE
-    BtAudioSpeaker* btspeaker = new BtAudioSpeaker(sink);
-    btspeaker->bt_speaker_start();
-#endif
-    start_wifi();
-    start_web_radio(sink);
+    Controller c;
+
+    c.playUrl(PLAY_URL);
+
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
     // ESP_LOGI(TAG, "app_main stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
 }
