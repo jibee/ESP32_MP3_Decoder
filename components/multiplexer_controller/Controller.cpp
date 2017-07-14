@@ -40,6 +40,9 @@
 #include "Sink.hpp"
 #include "web_radio.h"
 
+#ifdef CONFIG_BT_SPEAKER_MODE
+#include "bt_speaker.h"
+#endif
 
 #include "Controller.hpp"
 #define TAG "Controller::"
@@ -88,15 +91,21 @@ void Controller::stopWifi()
 void Controller::startBluetooth()
 {
 #ifdef CONFIG_BT_SPEAKER_MODE
-    btspeaker = new BtAudioSpeaker(sink);
-    btspeaker->bt_speaker_start();
+    if(nullptr==btspeaker)
+    {
+	btspeaker = new BtAudioSpeaker(sink, this);
+    }
+    btspeaker->setUp();
+    bluetoothUp=true;
 #endif
 }
 
 void Controller::stopBluetooth()
 {
-// TODO
     bluetoothUp=false;
+#ifdef CONFIG_BT_SPEAKER_MODE
+    btspeaker->setDown();
+#endif
 }
 
 void Controller::playUrl(const std::string& url)

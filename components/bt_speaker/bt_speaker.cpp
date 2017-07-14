@@ -31,6 +31,7 @@
 #include "esp_avrc_api.h"
 
 #include "Sink.hpp"
+#include "Controller.hpp"
 #include "bt_speaker.h"
 
 
@@ -67,9 +68,14 @@ struct bt_app_msg_t {
 xQueueHandle BtAudioSpeaker::bt_app_task_queue(NULL);
 xTaskHandle BtAudioSpeaker::bt_app_task_handle(NULL);
 
-BtAudioSpeaker::BtAudioSpeaker(Sink* r): 
-    renderer(r), m_pkt_cnt(0), m_audio_state(ESP_A2D_AUDIO_STATE_STOPPED)
+BtAudioSpeaker::BtAudioSpeaker(Sink* r, Controller* c): 
+    renderer(r), controller(c), m_pkt_cnt(0), m_audio_state(ESP_A2D_AUDIO_STATE_STOPPED)
 {
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s initialize controller failed\n", __func__);
+        return;
+    }
 }
 
 /** Start the audio renderer.
@@ -79,11 +85,14 @@ BtAudioSpeaker::BtAudioSpeaker(Sink* r):
 void BtAudioSpeaker::startRenderer()
 {
     renderer->take(this);
+    // TODO obtain a name of the media being played
+    controller->btAudioPlayStarted("unknown");
 }
 
 void BtAudioSpeaker::stopRenderer()
 {
     renderer->release(this);
+    controller->btAudioPlayStopped();
 }
 
 /** Submit samples for rendering.
@@ -102,14 +111,9 @@ void BtAudioSpeaker::renderSamples(const uint8_t *data, uint32_t len, pcm_format
  * 
  * Public method, called from the controlling application
  */
-void BtAudioSpeaker::bt_speaker_start()
+void BtAudioSpeaker::setUp()
 {
     instance_o = this;
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
-        ESP_LOGE(BT_AV_TAG, "%s initialize controller failed\n", __func__);
-        return;
-    }
 
     if (esp_bt_controller_enable(ESP_BT_MODE_BTDM) != ESP_OK) {
         ESP_LOGE(BT_AV_TAG, "%s enable controller failed\n", __func__);
@@ -131,6 +135,30 @@ void BtAudioSpeaker::bt_speaker_start()
 
     /* Bluetooth device name, connection mode and profile set up */
     bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
+}
+
+
+void BtAudioSpeaker::setDown()
+{
+    bt_app_task_shut_down();
+
+    if (esp_bluedroid_disable() != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s disable bluedroid failed\n", __func__);
+        return;
+    }
+    if (esp_bluedroid_deinit() != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s deinitialize bluedroid failed\n", __func__);
+        return;
+    }
+
+    if (esp_bt_controller_disable(ESP_BT_MODE_BTDM) != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s disable controller failed\n", __func__);
+        return;
+    }
+
+
+
+
 }
 
 /** Handler for Bluetooth stack events.

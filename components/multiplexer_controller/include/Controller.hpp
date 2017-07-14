@@ -56,6 +56,12 @@ class Controller
 
 	void playUrl(const std::string& url);
 	void stopPlay();
+
+
+	// Callbacks from the media players
+	void btAudioPlayStarted(const std::string& title);
+	void btAudioPlayStopped();
+
     private:
 	Renderer* renderer;
 	Sink* sink;

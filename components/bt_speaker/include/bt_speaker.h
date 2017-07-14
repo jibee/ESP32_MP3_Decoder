@@ -12,12 +12,14 @@
 #include "freertos/task.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
+#include "Sink.hpp"
 #include "Source.hpp"
 
 class Sink;
+class Controller;
 
-class _BtAudioSpeaker_impl;
 struct bt_app_msg_t;
+
 
 /**
  * @brief     handler for the dispatched work
@@ -28,14 +30,26 @@ typedef void (* bt_app_cb_t) (uint16_t event, void *param);
  */
 typedef void (* bt_app_copy_cb_t) (bt_app_msg_t *msg, void *p_dest, void *p_src);
 
+/** Bluetooth audio source - acting as a speaker.
+ * 
+ * Note that due to a limitation in the ESP bluetooth implementation, it is not
+ * sure that we can repetedly create and delete instances of this class.
+ * 
+ * A singleton instance approach would be appropriate
+ */
 class BtAudioSpeaker: public Source
 {
     public:
-	BtAudioSpeaker(Sink* renderer);
-	void bt_speaker_start();
+	BtAudioSpeaker(Sink* renderer, Controller* controller);
+	/** Bring the Speaker up. BT stack is made operational */
+	void setUp();
+
+	/** Bring the Speaker down. BT stack is disconnected */
+	void setDown();
     private:
 	static BtAudioSpeaker* instance(){ return instance_o; };
 	// API callbacks.
+	/** Audio configuration event */
 	void __a2d_event(uint16_t event, esp_a2d_cb_param_t* param);
 	void __a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param);
 
@@ -72,13 +86,20 @@ class BtAudioSpeaker: public Source
 	static void bt_app_task_start_up();
 	static void bt_app_task_shut_down();
 
-
+	/** Called when BT device starts streaming data to us */
 	void startRenderer();
+	/** Called when BT device sends data to us */
 	void renderSamples(const uint8_t *data, uint32_t len, pcm_format_t* format);
+	/** Called when BT device stops streaming data to us */
 	void stopRenderer();
 
 	Sink* renderer;
-	_BtAudioSpeaker_impl* impl;
+	Controller* controller;
+
+/** Singleton instance
+ * 
+ * We need this as the bluetooth stack does not allow for a context pointer to be provided.
+ */
 	static BtAudioSpeaker* instance_o;
 	uint32_t m_pkt_cnt;
 	esp_a2d_audio_state_t m_audio_state;
