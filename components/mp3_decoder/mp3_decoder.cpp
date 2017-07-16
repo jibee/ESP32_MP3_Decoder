@@ -101,7 +101,7 @@ enum mad_flow Mp3Decoder::input()
 
             //Wait until there is enough data in the buffer. This only happens when the data feed
             //rate is too low, and shouldn't normally be needed!
-            ESP_LOGE(TAG, "Buffer underflow, need %d bytes.", buf_free_capacity(buf));
+	    m_player->reportBufferUnderrun(buf_free_capacity(buf));
             buf_underrun_cnt++;
             //We both silence the output as well as wait a while by pushing silent samples into the i2s system.
             //This waits for about 200mS

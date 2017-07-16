@@ -112,10 +112,10 @@ void Controller::playUrl(const std::string& url)
 {
     ensureWifiUp();
     // init player config
-    player = new Player(sink);
+    player = new Player(sink, this);
 
     // init web radio
-    radio= new WebRadio(url, player);
+    radio = new WebRadio(url, player);
 
     // start radio
     radio->start();
@@ -141,5 +141,23 @@ void Controller::ensureBluetoothUp()
 	startBluetooth();
 	bluetoothUp=true;
     }
+}
+
+void Controller::btAudioPlayStarted(const std::string& url)
+{
+}
+
+void Controller::btAudioPlayStopped()
+{
+}
+
+void Controller::streamAudioReportBufferStatus(uint8_t fill_level, int bytes_in_buf)
+{
+    ESP_LOGI(TAG, "Buffer fill %u%%, %d bytes", fill_level, bytes_in_buf);
+}
+
+void Controller::reportBufferUnderrun(int neededData)
+{
+    ESP_LOGE(TAG, "Buffer underflow, need %d bytes.", neededData);
 }
 

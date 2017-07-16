@@ -31,6 +31,7 @@ typedef struct {
 } media_stream_t;
 
 class Sink;
+class Controller;
 
 class Player {
     private:
@@ -43,9 +44,10 @@ class Player {
 	component_status_t player_status;
 
 	Sink* renderer;
+	Controller* m_controller;
 	int blockCounter;
     public:
-	Player(Sink* r);
+	Player(Sink* r, Controller* c);
 
 	int audio_stream_consumer(const char *recv_buf, ssize_t bytes_read);
 	void set_player_status(component_status_t);
@@ -62,6 +64,8 @@ class Player {
 
 	media_stream_t* getMediaStream();
         Sink* getRenderer();
+/** Report a buffer underrun - when the decoder complains about not having enough data to decode */
+	void reportBufferUnderrun(int neededData);
 };
 
 #endif /* INCLUDE_AUDIO_PLAYER_H_ */

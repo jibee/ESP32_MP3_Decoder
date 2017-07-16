@@ -62,6 +62,18 @@ class Controller
 	void btAudioPlayStarted(const std::string& title);
 	void btAudioPlayStopped();
 
+	void streamAudioPlayStarted(const std::string& title);
+	void streamAudioPlayStopped();
+	/** Reporting buffer filling status
+	 * 
+	 * @param fill_level percentage of filling of the buffer
+	 * @param bytes_in_buf number of bytes in the buffer
+	 **/
+	void streamAudioReportBufferStatus(uint8_t fill_level, int bytes_in_buf);
+/** Report a buffer underrun - when the decoder complains about not having enough data to decode */
+	void reportBufferUnderrun(int neededData);
+
+
     private:
 	Renderer* renderer;
 	Sink* sink;

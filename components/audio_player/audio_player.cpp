@@ -17,13 +17,11 @@
 #include "mp3_decoder.h"
 #include "controls.h"
 #include "Sink.hpp"
+#include "Controller.hpp"
 
 #include "audio_player.hpp"
 
 #define TAG "audio_player"
-
-// TODO static allocation
-static Player* player_instance = NULL;
 
 int Player::start_decoder_task()
 {
@@ -95,7 +93,7 @@ int Player::audio_stream_consumer(const char *recv_buf, ssize_t bytes_read)
 
     blockCounter = (blockCounter + 1) & 255;
     if (blockCounter == 0) {
-        ESP_LOGI(TAG, "Buffer fill %u%%, %d bytes", fill_level, bytes_in_buf);
+	m_controller->streamAudioReportBufferStatus(fill_level, bytes_in_buf);
     }
 
     return 0;
@@ -103,7 +101,6 @@ int Player::audio_stream_consumer(const char *recv_buf, ssize_t bytes_read)
 
 void Player::audio_player_init()
 {
-    player_instance = this;
     player_status = INITIALIZED;
 }
 
@@ -159,7 +156,7 @@ void Player::set_player_status(component_status_t c)
     decoder_status = c;
 }
 
-Player::Player(Sink* r): renderer(r)
+Player::Player(Sink* r, Controller* c): renderer(r), m_controller(c)
 {
     command = CMD_NONE;
     decoder_status = UNINITIALIZED;
@@ -172,6 +169,11 @@ Player::Player(Sink* r): renderer(r)
 Sink* Player::getRenderer()
 {
     return renderer;
+}
+
+void Player::reportBufferUnderrun(int neededData)
+{
+    m_controller->reportBufferUnderrun(neededData);
 }
 
 
